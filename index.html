@@ -384,6 +384,7 @@
       color: #93c5fd;
     }
 
+    .landing-social-circle-btn,
     .landing-github-link {
       display: inline-flex;
       align-items: center;
@@ -403,6 +404,7 @@
       cursor: pointer;
     }
 
+    .landing-social-circle-btn svg,
     .landing-github-link svg {
       width: 22px;
       height: 22px;
@@ -411,6 +413,7 @@
       filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
     }
 
+    .landing-social-circle-btn::before,
     .landing-github-link::before {
       content: '';
       position: absolute;
@@ -429,6 +432,7 @@
       pointer-events: none;
     }
 
+    .landing-social-circle-btn:hover,
     .landing-github-link:hover {
       background: rgba(255, 255, 255, 0.14);
       border-color: rgba(255, 255, 255, 0.5);
@@ -436,14 +440,17 @@
       box-shadow: 0 0 24px rgba(255, 255, 255, 0.3), 0 8px 20px rgba(0, 0, 0, 0.6);
     }
 
+    .landing-social-circle-btn:hover::before,
     .landing-github-link:hover::before {
       transform: translateX(350%) rotate(25deg);
     }
 
+    .landing-social-circle-btn:hover svg,
     .landing-github-link:hover svg {
       transform: scale(1.12);
     }
 
+    .landing-social-circle-btn:active,
     .landing-github-link:active {
       transform: scale(0.94);
     }
@@ -1683,9 +1690,9 @@
                       <span>GitHub</span>
                       <i data-lucide="arrow-up-right" style="width: 11px; height: 11px; opacity: 0.7;"></i>
                     </a>
-                    <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" class="about-social-link" title="Instagram ds-xinn">
-                      <i data-lucide="instagram" style="width: 13px; height: 13px; color: #f472b6;"></i>
-                      <span>Instagram</span>
+                    <a href="https://www.instagram.com/drslm_22/" target="_blank" rel="noopener noreferrer" class="about-social-link" title="Instagram @drslm_22">
+                      <i data-lucide="instagram" style="width: 13px; height: 13px; color: #ffffff;"></i>
+                      <span>@drslm_22</span>
                       <i data-lucide="arrow-up-right" style="width: 11px; height: 11px; opacity: 0.7;"></i>
                     </a>
                   </div>
@@ -1696,10 +1703,10 @@
 
         </ul>
 
-        <!-- Right: GitHub Link (Bulat & Logo Asli GitHub dengan Animasi Hover) -->
-        <a class="landing-github-link" id="githubRepoLink" href="https://github.com/darussaalam" target="_blank" rel="noopener noreferrer" title="Kunjungi Profil &amp; Repositori GitHub @darussaalam" aria-label="GitHub @darussaalam">
-          <svg height="22" width="22" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-            <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
+        <!-- Right: Instagram Link (Bulat & Logo Resmi Instagram Hitam-Putih dengan Animasi Hover) -->
+        <a class="landing-social-circle-btn" id="instagramProfileLink" href="https://www.instagram.com/drslm_22/" target="_blank" rel="noopener noreferrer" title="Follow Instagram @drslm_22" aria-label="Instagram @drslm_22">
+          <svg height="22" width="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
           </svg>
         </a>
       </header>
