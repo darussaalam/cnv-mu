@@ -3853,38 +3853,22 @@
     });
 
     // ==========================================
-    // REALTIME LIVE USAGE STATS ENGINE
+    // REALTIME CLOUD LIVE STATS ENGINE (FROM 0 & AUTO-SYNC)
     // ==========================================
-    const STATS_BASE_VISITS = 31612;
-    const STATS_BASE_CONVERTS = 16009;
+    const COUNT_API_BASE = 'https://countapi.mileshilliard.com/api/v1';
+    const KEY_VISITS = 'darussaalam_cnvmu_live_visits';
+    const KEY_CONVERTS = 'darussaalam_cnvmu_live_conversions';
 
-    function getStoredVisits() {
-      let v = parseInt(localStorage.getItem('cnvmu_live_visits') || '0', 10);
-      if (!v || v < STATS_BASE_VISITS) {
-        v = STATS_BASE_VISITS;
-      }
-      if (!sessionStorage.getItem('cnvmu_session_visited')) {
-        sessionStorage.setItem('cnvmu_session_visited', '1');
-        v += Math.floor(Math.random() * 3) + 1;
-        localStorage.setItem('cnvmu_live_visits', v);
-      }
-      return v;
-    }
-
-    function getStoredConverts() {
-      let c = parseInt(localStorage.getItem('cnvmu_live_converts') || '0', 10);
-      if (!c || c < STATS_BASE_CONVERTS) {
-        c = STATS_BASE_CONVERTS;
-        localStorage.setItem('cnvmu_live_converts', c);
-      }
-      return c;
-    }
+    let liveVisits = parseInt(localStorage.getItem('cnvmu_cloud_visits') || '0', 10);
+    let liveConverts = parseInt(localStorage.getItem('cnvmu_cloud_converts') || '0', 10);
+    let isInitialRollDone = false;
 
     function formatIndoNumber(num) {
+      if (typeof num !== 'number' || isNaN(num)) num = 0;
       return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
     }
 
-    function animateRollDigits(containerId, formattedText, baseDelay) {
+    function renderDigits(containerId, formattedText, animate = false, baseDelay = 0) {
       const container = document.getElementById(containerId);
       if (!container) return 0;
       container.innerHTML = '';
@@ -3896,27 +3880,32 @@
         const span = document.createElement('span');
         if (/\d/.test(char)) {
           span.className = 'stat-digit';
-          span.textContent = '0';
-          container.appendChild(span);
-
           const targetNum = parseInt(char, 10);
-          const startDelay = baseDelay + (digitCount * 90);
-          digitCount++;
 
-          setTimeout(() => {
-            let cycles = 6;
-            let currentVal = 0;
-            const cycleInterval = setInterval(() => {
-              currentVal = (currentVal + 1) % 10;
-              span.textContent = currentVal;
-              cycles--;
-              if (cycles <= 0) {
-                clearInterval(cycleInterval);
-                span.textContent = targetNum;
-                span.style.color = '#ffffff';
-              }
-            }, 50);
-          }, startDelay);
+          if (animate) {
+            span.textContent = '0';
+            const startDelay = baseDelay + (digitCount * 80);
+            digitCount++;
+
+            setTimeout(() => {
+              let cycles = 5;
+              let currentVal = 0;
+              const cycleInterval = setInterval(() => {
+                currentVal = (currentVal + 1) % 10;
+                span.textContent = currentVal;
+                cycles--;
+                if (cycles <= 0) {
+                  clearInterval(cycleInterval);
+                  span.textContent = targetNum;
+                  span.style.color = '#ffffff';
+                }
+              }, 45);
+            }, startDelay);
+          } else {
+            span.textContent = targetNum;
+            digitCount++;
+          }
+          container.appendChild(span);
         } else {
           span.className = 'stat-dot';
           span.textContent = char;
@@ -3927,43 +3916,129 @@
       return digitCount;
     }
 
-    function initRealtimeStats() {
-      const visits = getStoredVisits();
-      const converts = getStoredConverts();
+    function updateStatsDisplay(animate = false) {
+      const visitsFormatted = formatIndoNumber(liveVisits);
+      const convertsFormatted = formatIndoNumber(liveConverts);
 
-      const visitsFormatted = formatIndoNumber(visits);
-      const convertsFormatted = formatIndoNumber(converts);
-
-      // Left-to-right staggered digit counting sequence
-      const visitsDigits = animateRollDigits('statVisitsDigits', visitsFormatted, 180);
-      const convertsDelay = 180 + (visitsDigits * 90) + 140;
-      animateRollDigits('statConvertsDigits', convertsFormatted, convertsDelay);
+      if (animate && !isInitialRollDone) {
+        isInitialRollDone = true;
+        const vDigits = renderDigits('statVisitsDigits', visitsFormatted, true, 160);
+        const cDelay = 160 + (vDigits * 80) + 120;
+        renderDigits('statConvertsDigits', convertsFormatted, true, cDelay);
+      } else {
+        renderDigits('statVisitsDigits', visitsFormatted, false);
+        renderDigits('statConvertsDigits', convertsFormatted, false);
+      }
     }
 
-    function incrementLiveConversions() {
-      let currentConverts = getStoredConverts() + 1;
-      localStorage.setItem('cnvmu_live_converts', currentConverts);
-
-      const formatted = formatIndoNumber(currentConverts);
-      const container = document.getElementById('statConvertsDigits');
-      if (container) {
-        container.innerHTML = '';
-        formatted.split('').forEach(char => {
-          const s = document.createElement('span');
-          s.className = /\d/.test(char) ? 'stat-digit' : 'stat-dot';
-          s.textContent = char;
-          container.appendChild(s);
+    async function fetchApi(endpoint) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 6000);
+        const res = await fetch(`${COUNT_API_BASE}/${endpoint}`, {
+          signal: controller.signal,
+          headers: { 'Accept': 'application/json' }
         });
+        clearTimeout(timeoutId);
+        if (!res.ok) return null;
+        return await res.json();
+      } catch (err) {
+        return null;
       }
+    }
+
+    async function initRealtimeStats() {
+      // Initial paint from local cache or 0
+      updateStatsDisplay(true);
+
+      // Register or fetch visit for this session
+      const hasSessionHit = sessionStorage.getItem('cnvmu_session_hit_v2');
+      let visitData = null;
+      if (!hasSessionHit) {
+        visitData = await fetchApi(`hit/${KEY_VISITS}`);
+        if (visitData && typeof visitData.value === 'number') {
+          sessionStorage.setItem('cnvmu_session_hit_v2', '1');
+          liveVisits = Math.max(liveVisits, visitData.value);
+          localStorage.setItem('cnvmu_cloud_visits', liveVisits);
+        }
+      } else {
+        visitData = await fetchApi(`get/${KEY_VISITS}`);
+        if (visitData && typeof visitData.value === 'number') {
+          liveVisits = Math.max(liveVisits, visitData.value);
+          localStorage.setItem('cnvmu_cloud_visits', liveVisits);
+        }
+      }
+
+      // Fetch current cloud conversions
+      const convertData = await fetchApi(`get/${KEY_CONVERTS}`);
+      if (convertData && typeof convertData.value === 'number') {
+        liveConverts = Math.max(liveConverts, convertData.value);
+        localStorage.setItem('cnvmu_cloud_converts', liveConverts);
+      }
+
+      // Update UI with verified values
+      updateStatsDisplay(false);
+
+      // Continuous polling every 5 seconds without needing page refresh
+      setInterval(pollCloudStats, 5000);
+    }
+
+    async function pollCloudStats() {
+      if (document.visibilityState === 'hidden') return;
+
+      const [vData, cData] = await Promise.all([
+        fetchApi(`get/${KEY_VISITS}`),
+        fetchApi(`get/${KEY_CONVERTS}`)
+      ]);
+
+      let changed = false;
+      if (vData && typeof vData.value === 'number' && vData.value > liveVisits) {
+        liveVisits = vData.value;
+        localStorage.setItem('cnvmu_cloud_visits', liveVisits);
+        changed = true;
+      }
+
+      if (cData && typeof cData.value === 'number' && cData.value > liveConverts) {
+        liveConverts = cData.value;
+        localStorage.setItem('cnvmu_cloud_converts', liveConverts);
+        changed = true;
+      }
+
+      if (changed) {
+        updateStatsDisplay(false);
+        const pill = document.getElementById('floatingLiveStats');
+        if (pill) {
+          pill.classList.add('stat-updated');
+          setTimeout(() => pill.classList.remove('stat-updated'), 700);
+        }
+      }
+    }
+
+    async function incrementLiveConversions() {
+      liveConverts++;
+      localStorage.setItem('cnvmu_cloud_converts', liveConverts);
+      updateStatsDisplay(false);
 
       const pill = document.getElementById('floatingLiveStats');
       if (pill) {
         pill.classList.add('stat-updated');
-        setTimeout(() => pill.classList.remove('stat-updated'), 800);
+        setTimeout(() => pill.classList.remove('stat-updated'), 700);
+      }
+
+      const hitRes = await fetchApi(`hit/${KEY_CONVERTS}`);
+      if (hitRes && typeof hitRes.value === 'number') {
+        liveConverts = Math.max(liveConverts, hitRes.value);
+        localStorage.setItem('cnvmu_cloud_converts', liveConverts);
+        updateStatsDisplay(false);
       }
     }
 
-    // Initialize Realtime Statistics on page load
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        pollCloudStats();
+      }
+    });
+
     initRealtimeStats();
   </script>
 </body>
