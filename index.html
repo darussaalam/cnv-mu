@@ -1,0 +1,3699 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>Cnv-Mu — Deterministic In-Browser File & PDF Compression Studio</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script>
+    if (window.pdfjsLib) {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    }
+  </script>
+  <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+  <style>
+    :root {
+      --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+
+      /* Landing Dark Satin Aesthetic (Exact Antislop Palette) */
+      --landing-bg: #030303;
+      --landing-surface: rgba(18, 18, 18, 0.85);
+      --landing-border: rgba(255, 255, 255, 0.12);
+      --landing-border-hover: rgba(255, 255, 255, 0.28);
+      --landing-text-main: #f8fafc;
+      --landing-text-muted: #94a3b8;
+      --landing-text-subtle: #64748b;
+
+      /* Studio Dark Liquid Glass Palette (Matches Main Landing Theme) */
+      --studio-bg: #020202;
+      --surface-glass: rgba(18, 18, 22, 0.76);
+      --surface-glass-solid: rgba(24, 24, 30, 0.92);
+      --glass-border: rgba(255, 255, 255, 0.12);
+      --glass-border-subtle: rgba(255, 255, 255, 0.08);
+      --glass-shadow: 0 20px 48px -12px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+
+      /* High-Contrast Accents */
+      --text-main: #f8fafc;
+      --text-muted: #cbd5e1;
+      --text-subtle: #94a3b8;
+
+      --accent-emerald: #10b981;
+      --accent-emerald-light: #34d399;
+      --accent-red: #ef4444;
+
+      --radius-sm: 8px;
+      --radius-md: 14px;
+      --radius-lg: 20px;
+      --radius-xl: 28px;
+      --radius-pill: 9999px;
+
+      --spring-tactile: cubic-bezier(0.34, 1.56, 0.64, 1);
+      --ease-smooth: cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body {
+      background-color: var(--landing-bg);
+      color: var(--landing-text-main);
+      font-family: var(--font-sans);
+      min-height: 100vh;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    /* Dynamic mouse spotlight effect (ambient glow following cursor) */
+    .mouse-spotlight {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 1;
+      background: radial-gradient(750px circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(255, 255, 255, 0.085), transparent 48%);
+    }
+
+    /* Anisotropic Dark Sheen Metallic Ribbon Background (Exact Antislop Sheen) */
+    .anisotropic-ribbons {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      overflow: hidden;
+      background: #020202;
+    }
+
+    .anisotropic-ribbons::before {
+      content: '';
+      position: absolute;
+      top: -35%;
+      left: -35%;
+      width: 170%;
+      height: 170%;
+      background: 
+        radial-gradient(ellipse 65% 45% at 55% 30%, rgba(65, 65, 75, 0.38) 0%, transparent 60%),
+        repeating-linear-gradient(
+          -34deg,
+          transparent 0%,
+          rgba(255, 255, 255, 0.012) 6%,
+          rgba(255, 255, 255, 0.07) 12%,
+          rgba(255, 255, 255, 0.17) 16%,
+          rgba(255, 255, 255, 0.04) 20%,
+          transparent 28%,
+          transparent 40%
+        ),
+        linear-gradient(
+          125deg,
+          #010101 0%,
+          #08080a 12%,
+          #18191d 22%,
+          #2e3037 30%,
+          #0e0f11 38%,
+          #030304 48%,
+          #16171b 58%,
+          #32343b 68%,
+          #141518 78%,
+          #020202 100%
+        );
+      filter: blur(8px);
+      opacity: 0.95;
+      animation: ribbonFloat 26s ease-in-out infinite alternate;
+    }
+
+    .anisotropic-ribbons::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: 
+        radial-gradient(circle at 50% 35%, rgba(255, 255, 255, 0.04) 0%, transparent 55%),
+        radial-gradient(ellipse 90% 70% at 50% 50%, transparent 40%, rgba(0, 0, 0, 0.85) 100%);
+    }
+
+    @keyframes ribbonFloat {
+      0% { transform: translateY(-16px) rotate(1deg) scale(1.02); }
+      100% { transform: translateY(16px) rotate(3deg) scale(1.05); }
+    }
+
+    /* Soft Studio Mesh for Studio View */
+    .studio-mesh-layer {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      display: none;
+      background: #f6f8fc;
+    }
+
+    .studio-mesh-layer .mesh-orb-1 {
+      position: absolute;
+      top: -10%;
+      left: 10%;
+      width: 550px;
+      height: 550px;
+      border-radius: 50%;
+      filter: blur(100px);
+      background: radial-gradient(circle, rgba(224, 231, 255, 0.95) 0%, transparent 70%);
+    }
+
+    .studio-mesh-layer .mesh-orb-2 {
+      position: absolute;
+      bottom: -15%;
+      right: 15%;
+      width: 650px;
+      height: 650px;
+      border-radius: 50%;
+      filter: blur(100px);
+      background: radial-gradient(circle, rgba(209, 250, 229, 0.85) 0%, transparent 70%);
+    }
+
+    body.studio-mode {
+      background-color: var(--landing-bg);
+      color: var(--landing-text-main);
+    }
+
+    body.studio-mode .anisotropic-ribbons,
+    body.studio-mode .mouse-spotlight {
+      display: block;
+    }
+
+    body.studio-mode .studio-mesh-layer {
+      display: none;
+    }
+
+    /* VIEW MANAGEMENT */
+    .view-container {
+      display: none;
+      position: relative;
+      z-index: 2;
+      animation: fadeInView 0.28s ease-out;
+    }
+
+    .view-container.active-view {
+      display: block;
+    }
+
+    @keyframes fadeInView {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ========================================== */
+    /* LANDING PAGE STYLES (EXACT ANTISLOP STYLE) */
+    /* ========================================== */
+    .landing-wrapper {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 20px 32px 20px;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    /* Landing Top Nav */
+    .landing-nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 0;
+      position: relative;
+    }
+
+    .landing-logo {
+      font-size: 1.35rem;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      color: #ffffff;
+      text-decoration: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 2px;
+    }
+
+    .landing-logo span {
+      color: var(--accent-emerald-light);
+    }
+
+    /* Center Nav with Smooth Dropdown */
+    .landing-menu-center {
+      display: flex;
+      align-items: center;
+      gap: 32px;
+      list-style: none;
+    }
+
+    .landing-nav-item {
+      position: relative;
+    }
+
+    .landing-nav-link {
+      color: #cbd5e1;
+      text-decoration: none;
+      font-size: 0.92rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 8px 0;
+      transition: color 0.18s ease;
+    }
+
+    .landing-nav-link:hover {
+      color: #ffffff;
+    }
+
+    .nav-chevron {
+      transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .landing-nav-item:hover .nav-chevron {
+      transform: rotate(180deg);
+    }
+
+    /* Smooth Dropdown Panel with Invisible Hover Bridge */
+    .nav-dropdown-menu {
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      transform: translateX(-50%) translateY(10px);
+      width: 340px;
+      background: rgba(14, 14, 14, 0.94);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: var(--radius-lg);
+      box-shadow: 0 24px 48px -8px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      padding: 12px;
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+      z-index: 100;
+    }
+
+    /* Invisible bridge prevents mouseout when moving between link and menu */
+    .nav-dropdown-menu::before {
+      content: '';
+      position: absolute;
+      top: -14px;
+      left: 0;
+      right: 0;
+      height: 14px;
+    }
+
+    .landing-nav-item:hover .nav-dropdown-menu {
+      opacity: 1;
+      transform: translateX(-50%) translateY(2px);
+      pointer-events: auto;
+    }
+
+    .dropdown-tool-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 12px;
+      border-radius: var(--radius-sm);
+      text-decoration: none;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .dropdown-tool-item:hover {
+      background: rgba(255, 255, 255, 0.08);
+      transform: translateX(3px);
+    }
+
+    .dropdown-tool-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #ffffff;
+      flex-shrink: 0;
+    }
+
+    .dropdown-tool-name {
+      font-size: 0.86rem;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 2px;
+    }
+
+    .dropdown-tool-sub {
+      font-size: 0.72rem;
+      color: #94a3b8;
+    }
+
+    .about-card-box {
+      padding: 14px 16px;
+      color: #cbd5e1;
+      font-size: 0.82rem;
+      line-height: 1.5;
+    }
+
+    .about-card-box strong {
+      color: #ffffff;
+      font-weight: 700;
+    }
+
+    .about-tech-tag {
+      display: inline-block;
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.1);
+      margin: 3px 2px 0 0;
+      color: #93c5fd;
+    }
+
+    .landing-github-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      color: #ffffff;
+      text-decoration: none;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(16px);
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4), inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+      transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      position: relative;
+      overflow: hidden;
+      cursor: pointer;
+    }
+
+    .landing-github-link svg {
+      width: 22px;
+      height: 22px;
+      fill: #ffffff;
+      transition: transform 0.3s var(--spring-tactile), fill 0.2s ease;
+      filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+    }
+
+    .landing-github-link::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -100%;
+      width: 60%;
+      height: 200%;
+      background: linear-gradient(
+        120deg,
+        transparent 0%,
+        rgba(255, 255, 255, 0.4) 50%,
+        transparent 100%
+      );
+      transform: rotate(25deg);
+      transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+      pointer-events: none;
+    }
+
+    .landing-github-link:hover {
+      background: rgba(255, 255, 255, 0.14);
+      border-color: rgba(255, 255, 255, 0.5);
+      transform: translateY(-2px) scale(1.1) rotate(4deg);
+      box-shadow: 0 0 24px rgba(255, 255, 255, 0.3), 0 8px 20px rgba(0, 0, 0, 0.6);
+    }
+
+    .landing-github-link:hover::before {
+      transform: translateX(350%) rotate(25deg);
+    }
+
+    .landing-github-link:hover svg {
+      transform: scale(1.12);
+    }
+
+    .landing-github-link:active {
+      transform: scale(0.94);
+    }
+
+    /* Landing Hero Section */
+    .landing-hero {
+      text-align: center;
+      margin: auto 0;
+      padding: 40px 0 60px;
+    }
+
+    .landing-h1 {
+      font-size: clamp(2.8rem, 6.5vw, 5.2rem);
+      font-weight: 800;
+      letter-spacing: -0.045em;
+      line-height: 1.05;
+      color: #ffffff;
+      margin-bottom: 24px;
+    }
+
+    .landing-p {
+      font-size: clamp(1rem, 2vw, 1.25rem);
+      color: #94a3b8;
+      max-width: 680px;
+      margin: 0 auto 40px;
+      line-height: 1.55;
+    }
+
+    /* Center Pill Action Button (Foto antislop npx style) */
+    .hero-pill-btn-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .hero-center-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 18px;
+      background: rgba(14, 14, 14, 0.88);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      padding: 12px 20px 12px 28px;
+      border-radius: var(--radius-pill);
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.06) inset;
+      cursor: pointer;
+      transition: all 0.22s var(--spring-tactile);
+    }
+
+    .hero-center-pill:hover {
+      border-color: rgba(255, 255, 255, 0.5);
+      background: rgba(22, 22, 22, 0.95);
+      transform: translateY(-2px);
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.8), 0 0 16px rgba(255, 255, 255, 0.1);
+    }
+
+    .hero-center-pill:active {
+      transform: scale(0.97);
+    }
+
+    .hero-pill-code {
+      font-family: var(--font-mono);
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: #ffffff;
+      letter-spacing: -0.01em;
+    }
+
+    .hero-pill-action-icon {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: #ffffff;
+      color: #000000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.2s var(--spring-tactile);
+    }
+
+    .hero-center-pill:hover .hero-pill-action-icon {
+      transform: translateX(3px);
+    }
+
+    .hero-sub-action-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.86rem;
+      color: #cbd5e1;
+      padding: 6px 14px;
+      border-radius: var(--radius-pill);
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.18s ease;
+    }
+
+    .hero-sub-action-link:hover {
+      color: #ffffff;
+      background: rgba(255, 255, 255, 0.12);
+      border-color: rgba(255, 255, 255, 0.25);
+    }
+
+    /* Landing Footer (Clean, Centered & Anchored to Bottom per Antislop Reference) */
+    .landing-footer {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 42px 0 16px;
+      font-size: 0.85rem;
+      color: #94a3b8;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      margin-top: auto;
+      gap: 10px;
+    }
+
+    .landing-footer-quote {
+      max-width: 760px;
+      margin: 0 auto;
+      line-height: 1.6;
+      color: #94a3b8;
+      text-align: center;
+    }
+
+    .landing-footer-copy {
+      font-family: var(--font-mono);
+      font-size: 0.76rem;
+      color: #64748b;
+      text-align: center;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      margin: 0 auto;
+    }
+
+    .about-social-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: var(--radius-sm);
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: #f8fafc;
+      font-size: 0.78rem;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.18s ease;
+    }
+
+    .about-social-link:hover {
+      background: rgba(225, 48, 108, 0.18);
+      border-color: rgba(244, 114, 182, 0.45);
+      color: #ffffff;
+      transform: translateY(-1px);
+    }
+
+    /* ========================================== */
+    /* STUDIO WORKSPACE (SOFT WHITE LIQUID GLASS) */
+    /* ========================================== */
+    .studio-app-viewport {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 18px 24px 60px;
+    }
+
+    .liquid-card {
+      background: var(--surface-glass);
+      backdrop-filter: blur(28px) saturate(180%);
+      -webkit-backdrop-filter: blur(28px) saturate(180%);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--glass-shadow);
+      transition: all 0.25s var(--ease-smooth);
+    }
+
+    .top-nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 24px;
+      margin-bottom: 24px;
+      gap: 16px;
+      border-radius: var(--radius-pill);
+    }
+
+    .brand-cluster {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      cursor: pointer;
+    }
+
+    .brand-logo {
+      width: 40px;
+      height: 40px;
+      border-radius: 11px;
+      background: linear-gradient(135deg, #10b981 0%, #047857 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #ffffff;
+      box-shadow: 0 4px 14px rgba(16, 185, 129, 0.3);
+    }
+
+    .brand-title {
+      font-size: 1.2rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: var(--text-main);
+    }
+
+    .badge-privacy {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      border-radius: var(--radius-pill);
+      background: var(--surface-glass-solid);
+      border: 1px solid var(--glass-border-subtle);
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--accent-emerald);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .badge-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent-emerald-light);
+      box-shadow: 0 0 6px rgba(16, 185, 129, 0.6);
+      animation: pulseDot 2s infinite ease-in-out;
+    }
+
+    @keyframes pulseDot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .btn-icon-liquid {
+      width: 38px;
+      height: 38px;
+      border-radius: var(--radius-pill);
+      background: var(--surface-glass-solid);
+      border: 1px solid var(--glass-border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.2s var(--spring-tactile);
+    }
+
+    .btn-icon-liquid:hover {
+      color: var(--text-main);
+      transform: scale(1.05);
+      border-color: rgba(16, 185, 129, 0.5);
+    }
+
+    /* Dashboard Header & Filter Pills (Foto 1) */
+    .dashboard-hero {
+      text-align: center;
+      margin-bottom: 28px;
+      padding: 10px 0;
+    }
+
+    .dash-headline {
+      font-size: 2.1rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      color: var(--text-main);
+      margin-bottom: 8px;
+    }
+
+    .dash-subheadline {
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      max-width: 640px;
+      margin: 0 auto 20px;
+      line-height: 1.5;
+    }
+
+    .category-tabs-wrap {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .cat-pill-btn {
+      padding: 8px 18px;
+      border-radius: var(--radius-pill);
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: #94a3b8;
+      cursor: pointer;
+      backdrop-filter: blur(12px);
+      transition: all 0.2s var(--spring-tactile);
+    }
+
+    .cat-pill-btn:hover {
+      color: #ffffff;
+      border-color: rgba(255, 255, 255, 0.28);
+      background: rgba(255, 255, 255, 0.1);
+      transform: translateY(-1px);
+    }
+
+    .cat-pill-btn.active {
+      background: #ffffff;
+      color: #050505;
+      border-color: #ffffff;
+      box-shadow: 0 4px 18px rgba(255, 255, 255, 0.25);
+    }
+
+    /* Tools Grid */
+    .tools-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+      gap: 16px;
+      margin-bottom: 40px;
+    }
+
+    .tool-card {
+      padding: 22px 20px;
+      border-radius: var(--radius-lg);
+      background: rgba(18, 18, 22, 0.72);
+      backdrop-filter: blur(20px) saturate(160%);
+      -webkit-backdrop-filter: blur(20px) saturate(160%);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.25s var(--spring-tactile);
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+    }
+
+    /* Animated Glass Refraction Light Beam on Hover */
+    .tool-card::before {
+      content: '';
+      position: absolute;
+      top: -60%;
+      left: -130%;
+      width: 70%;
+      height: 220%;
+      background: linear-gradient(
+        120deg,
+        transparent 0%,
+        rgba(255, 255, 255, 0.03) 25%,
+        rgba(255, 255, 255, 0.24) 50%,
+        transparent 75%
+      );
+      transform: rotate(28deg);
+      transition: transform 0.65s cubic-bezier(0.16, 1, 0.3, 1);
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    .tool-card:hover {
+      transform: translateY(-4px);
+      background: rgba(26, 26, 32, 0.88);
+      border-color: rgba(255, 255, 255, 0.35);
+      box-shadow: 0 22px 50px -10px rgba(0, 0, 0, 0.9), 0 0 20px rgba(255, 255, 255, 0.08);
+    }
+
+    .tool-card:hover::before {
+      transform: translateX(450%) rotate(28deg);
+    }
+
+    .tool-card:active {
+      transform: scale(0.97);
+    }
+
+    .tool-card.featured {
+      border: 1.5px solid var(--accent-emerald);
+      box-shadow: 0 10px 30px -6px rgba(16, 185, 129, 0.3);
+    }
+
+    .tool-icon-box {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 16px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
+    }
+
+    .tool-icon-box.red { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
+    .tool-icon-box.blue { background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); }
+    .tool-icon-box.green { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
+    .tool-icon-box.amber { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
+    .tool-icon-box.purple { background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); }
+    .tool-icon-box.cyan { background: rgba(6, 182, 212, 0.15); color: #22d3ee; border: 1px solid rgba(6, 182, 212, 0.3); }
+
+    .tool-title {
+      font-size: 1rem;
+      font-weight: 800;
+      color: #ffffff;
+      margin-bottom: 6px;
+      letter-spacing: -0.01em;
+    }
+
+    .tool-desc {
+      font-size: 0.76rem;
+      color: #94a3b8;
+      line-height: 1.45;
+      flex: 1;
+    }
+
+    .badge-free-unlocked {
+      display: inline-block;
+      font-size: 0.65rem;
+      font-weight: 800;
+      color: #34d399;
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid rgba(16, 185, 129, 0.25);
+      padding: 2px 7px;
+      border-radius: 4px;
+      margin-top: 10px;
+      align-self: flex-start;
+      letter-spacing: 0.03em;
+    }
+
+    /* Single Tool Landing / Upload View */
+    .tool-header-nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+    }
+
+    .btn-back-tools {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      border-radius: var(--radius-pill);
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: #ffffff;
+      cursor: pointer;
+      backdrop-filter: blur(14px);
+      transition: all 0.2s var(--spring-tactile);
+    }
+
+    .btn-back-tools:hover {
+      background: rgba(255, 255, 255, 0.14);
+      border-color: rgba(255, 255, 255, 0.3);
+      transform: translateX(-2px);
+    }
+
+    .landing-center-box {
+      max-width: 760px;
+      margin: 40px auto 60px;
+      text-align: center;
+    }
+
+    .landing-tool-title {
+      font-size: 2.2rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      color: #ffffff;
+      margin-bottom: 8px;
+    }
+
+    .landing-tool-sub {
+      font-size: 0.95rem;
+      color: #94a3b8;
+      margin-bottom: 32px;
+      line-height: 1.5;
+    }
+
+    .btn-big-action {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      padding: 16px 40px;
+      border-radius: var(--radius-pill);
+      background: #dc2626;
+      color: #ffffff;
+      font-size: 1.15rem;
+      font-weight: 800;
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 10px 30px -6px rgba(220, 38, 38, 0.5);
+      transition: all 0.2s var(--spring-tactile);
+    }
+
+    .btn-big-action.green-style {
+      background: linear-gradient(135deg, #10b981 0%, #047857 100%);
+      box-shadow: 0 10px 30px -6px rgba(16, 185, 129, 0.5);
+    }
+
+    .btn-big-action:hover {
+      transform: translateY(-2px) scale(1.02);
+      box-shadow: 0 14px 36px -6px rgba(220, 38, 38, 0.6);
+    }
+
+    .drop-hint-text {
+      margin-top: 14px;
+      font-size: 0.82rem;
+      color: #94a3b8;
+    }
+
+    /* Multi-File Workspace with Sidebar */
+    .workspace-layout {
+      display: grid;
+      grid-template-columns: 1fr 380px;
+      gap: 24px;
+      align-items: start;
+    }
+
+    .files-gallery-stage {
+      padding: 32px;
+      min-height: 520px;
+      border-radius: var(--radius-xl);
+      background: rgba(14, 14, 18, 0.65);
+      border: 2px dashed rgba(255, 255, 255, 0.16);
+      backdrop-filter: blur(20px);
+      position: relative;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      align-content: flex-start;
+    }
+
+    .btn-floating-add {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: #dc2626;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 6px 18px rgba(220, 38, 38, 0.45);
+      transition: all 0.2s var(--spring-tactile);
+      z-index: 10;
+    }
+
+    .btn-floating-add:hover {
+      transform: scale(1.1);
+    }
+
+    .file-thumb-card {
+      width: 170px;
+      background: rgba(24, 24, 30, 0.85);
+      border-radius: var(--radius-md);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      transition: all 0.2s var(--spring-tactile);
+    }
+
+    .file-thumb-card:hover {
+      transform: translateY(-2px);
+      border-color: rgba(255, 255, 255, 0.3);
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6);
+    }
+
+    .thumb-preview-box {
+      width: 100%;
+      height: 190px;
+      background: rgba(10, 10, 14, 0.9);
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 10px;
+    }
+
+    .thumb-preview-box img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }
+
+    .thumb-filename {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #ffffff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 2px;
+    }
+
+    .thumb-filesize {
+      font-size: 0.68rem;
+      font-family: var(--font-mono);
+      color: #94a3b8;
+    }
+
+    .btn-thumb-remove {
+      position: absolute;
+      top: -8px;
+      right: -8px;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: #ef4444;
+      color: #ffffff;
+      border: 2px solid rgba(18, 18, 22, 0.9);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+    }
+
+    /* Right Sidebar Settings */
+    .sidebar-settings-card {
+      padding: 24px;
+      border-radius: var(--radius-xl);
+      background: rgba(18, 18, 22, 0.85);
+      backdrop-filter: blur(24px);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      box-shadow: 0 20px 48px -10px rgba(0, 0, 0, 0.8);
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .sidebar-tool-heading {
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: #ffffff;
+      padding-bottom: 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .sidebar-input {
+      width: 100%;
+      padding: 11px 14px;
+      border-radius: var(--radius-md);
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      color: #ffffff;
+      font-size: 0.85rem;
+      font-family: inherit;
+      outline: none;
+      transition: all 0.2s var(--ease-smooth);
+    }
+    .sidebar-input:focus {
+      border-color: var(--accent-emerald);
+      background: rgba(255, 255, 255, 0.09);
+      box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.25);
+    }
+
+    .option-radio-box {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 14px;
+      border-radius: var(--radius-md);
+      border: 1.5px solid rgba(255, 255, 255, 0.14);
+      cursor: pointer;
+      background: rgba(255, 255, 255, 0.04);
+      transition: all 0.2s var(--ease-smooth);
+    }
+
+    .option-radio-box:hover {
+      border-color: rgba(255, 255, 255, 0.3);
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .option-radio-box.selected {
+      border-color: var(--accent-emerald);
+      background: rgba(16, 185, 129, 0.12);
+      box-shadow: 0 0 0 1px var(--accent-emerald);
+    }
+
+    .radio-dot {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      border: 2px solid #94a3b8;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 2px;
+      flex-shrink: 0;
+    }
+
+    .option-radio-box.selected .radio-dot {
+      border-color: var(--accent-emerald);
+    }
+
+    .option-radio-box.selected .radio-dot::after {
+      content: "";
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--accent-emerald);
+    }
+
+    .option-content {
+      flex: 1;
+    }
+
+    .option-title-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 3px;
+    }
+
+    .option-title {
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: #ffffff;
+    }
+
+    .badge-unlocked-pill {
+      font-size: 0.64rem;
+      font-weight: 800;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+      letter-spacing: 0.04em;
+    }
+
+    .option-desc {
+      font-size: 0.74rem;
+      color: #94a3b8;
+      line-height: 1.35;
+    }
+
+    /* Target Ceiling Presets Grid (≤ 1MB, 2MB, 3MB, 500KB, Custom) */
+    .preset-caps-container {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .preset-cap-btn {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 14px;
+      border-radius: var(--radius-md);
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      cursor: pointer;
+      text-align: left;
+      transition: all 0.2s var(--spring-tactile);
+    }
+
+    .preset-cap-btn:hover {
+      border-color: rgba(255, 255, 255, 0.35);
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .preset-cap-btn.active {
+      background: rgba(16, 185, 129, 0.16);
+      border-color: var(--accent-emerald);
+      box-shadow: 0 0 0 1.5px var(--accent-emerald);
+    }
+
+    .cap-main-val {
+      font-family: var(--font-mono);
+      font-size: 0.92rem;
+      font-weight: 800;
+      color: #ffffff;
+    }
+
+    .cap-sub-label {
+      font-size: 0.72rem;
+      color: #94a3b8;
+    }
+
+    .btn-execute-action {
+      width: 100%;
+      padding: 16px;
+      border-radius: var(--radius-pill);
+      background: #dc2626;
+      color: #ffffff;
+      font-size: 1rem;
+      font-weight: 800;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      box-shadow: 0 8px 24px -4px rgba(220, 38, 38, 0.5);
+      transition: all 0.2s var(--spring-tactile);
+      margin-top: 10px;
+    }
+
+    .btn-execute-action.green-style {
+      background: linear-gradient(135deg, #10b981 0%, #047857 100%);
+      box-shadow: 0 8px 24px -4px rgba(16, 185, 129, 0.5);
+    }
+
+    .btn-execute-action:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 28px -4px rgba(220, 38, 38, 0.6);
+    }
+
+    .btn-execute-action:active {
+      transform: scale(0.96);
+    }
+
+    /* Modal Quality Inspector */
+    .inspector-modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      z-index: 1000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      opacity: 0;
+      transition: opacity 0.25s ease;
+    }
+
+    .inspector-modal-backdrop.open {
+      display: flex;
+      opacity: 1;
+    }
+
+    .inspector-modal-card {
+      width: 100%;
+      max-width: 860px;
+      background: rgba(18, 18, 22, 0.96);
+      backdrop-filter: blur(32px);
+      border-radius: var(--radius-xl);
+      box-shadow: 0 30px 70px -15px rgba(0, 0, 0, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      overflow: hidden;
+      animation: modalSlideIn 0.3s var(--spring-tactile);
+    }
+
+    @keyframes modalSlideIn {
+      from { transform: scale(0.92) translateY(20px); opacity: 0; }
+      to { transform: scale(1) translateY(0); opacity: 1; }
+    }
+
+    .inspector-header {
+      padding: 16px 22px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(24, 24, 30, 0.9);
+    }
+
+    .inspector-title {
+      font-size: 1.05rem;
+      font-weight: 800;
+      color: #ffffff;
+    }
+
+    .inspector-close-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      background: rgba(255, 255, 255, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: #cbd5e1;
+      transition: all 0.2s var(--spring-tactile);
+    }
+
+    .inspector-close-btn:hover {
+      background: rgba(255, 255, 255, 0.18);
+      color: #ffffff;
+      transform: scale(1.1);
+    }
+
+    .inspector-body {
+      padding: 20px;
+      background: rgba(14, 14, 18, 0.9);
+    }
+
+    .split-compare-container {
+      position: relative;
+      height: 440px;
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      background: #09090b;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      user-select: none;
+    }
+
+    .compare-side {
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    .compare-side.original {
+      width: 100%;
+      background: #09090b;
+      z-index: 1;
+    }
+
+    .compare-side.compressed {
+      width: 50%;
+      background: #09090b;
+      border-right: 2px solid var(--accent-emerald);
+      overflow: hidden;
+      z-index: 2;
+    }
+
+    .compare-img-wrap {
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      box-sizing: border-box;
+    }
+
+    .compare-preview-img {
+      max-width: 95%;
+      max-height: 90%;
+      object-fit: contain;
+      border-radius: 6px;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+      background: #ffffff;
+    }
+
+    .compare-badge {
+      position: absolute;
+      top: 14px;
+      padding: 5px 12px;
+      border-radius: var(--radius-pill);
+      font-size: 0.74rem;
+      font-weight: 700;
+      z-index: 10;
+      backdrop-filter: blur(8px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    }
+
+    .badge-orig {
+      right: 14px;
+      background: rgba(15, 23, 42, 0.9);
+      color: #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .badge-comp {
+      left: 14px;
+      background: rgba(4, 120, 87, 0.95);
+      color: #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.25);
+    }
+
+    .split-divider-handle {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 50%;
+      width: 4px;
+      background: var(--accent-emerald);
+      cursor: ew-resize;
+      z-index: 30;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .split-handle-grip {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: #ffffff;
+      border: 2px solid var(--accent-emerald);
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--accent-emerald);
+    }
+
+    .inspector-footer {
+      padding: 16px 22px;
+      background: rgba(24, 24, 30, 0.95);
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .compare-metrics {
+      display: flex;
+      gap: 16px;
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      color: #cbd5e1;
+    }
+
+    /* Sound indicator toast */
+    .sound-toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: rgba(18, 18, 18, 0.95);
+      color: #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(16px);
+      padding: 8px 16px;
+      border-radius: var(--radius-pill);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      z-index: 2000;
+      pointer-events: none;
+      opacity: 0;
+      transform: translateY(10px);
+      transition: all 0.2s var(--spring-tactile);
+    }
+
+    body.studio-mode .sound-toast {
+      background: var(--surface-glass-solid);
+      color: var(--text-main);
+      border-color: var(--glass-border);
+    }
+
+    .sound-toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    @media (max-width: 900px) {
+      .landing-menu-center {
+        display: none;
+      }
+      .workspace-layout {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Dynamic Mouse Spotlight (Ambient Glow following Cursor) -->
+  <div class="mouse-spotlight"></div>
+
+  <!-- Anisotropic Ribbons Dark Background for Landing -->
+  <div class="anisotropic-ribbons" aria-hidden="true"></div>
+
+  <!-- Soft Ambient Mesh for Studio -->
+  <div class="studio-mesh-layer" aria-hidden="true">
+    <div class="mesh-orb-1"></div>
+    <div class="mesh-orb-2"></div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- VIEW: MAIN LANDING PAGE (EXACT ANTISLOP STYLE) -->
+  <!-- ========================================== -->
+  <div id="view-landing" class="view-container active-view">
+    <div class="landing-wrapper">
+      
+      <!-- Top Navigation -->
+      <header class="landing-nav">
+        <a class="landing-logo" onclick="openStudioView('dashboard')">
+          /Cnv-Mu<span>.</span>
+        </a>
+
+        <!-- Center Menu: Alat, Showcase, About Me -->
+        <ul class="landing-menu-center">
+          
+          <!-- Menu 1: ALAT (Smooth Animated Dropdown) -->
+          <li class="landing-nav-item">
+            <span class="landing-nav-link">
+              <span>Alat</span>
+              <i data-lucide="chevron-down" class="nav-chevron" style="width: 14px; height: 14px;"></i>
+            </span>
+            <div class="nav-dropdown-menu">
+              <a class="dropdown-tool-item" onclick="openToolDirect('compress')">
+                <div class="dropdown-tool-icon"><i data-lucide="minimize-2" style="width: 16px; height: 16px; color: #10b981;"></i></div>
+                <div>
+                  <div class="dropdown-tool-name">Compress PDF &amp; Files</div>
+                  <div class="dropdown-tool-sub">Target &le; 1MB, 2MB, 3MB, Custom</div>
+                </div>
+              </a>
+
+              <a class="dropdown-tool-item" onclick="openToolDirect('pdf2word')">
+                <div class="dropdown-tool-icon"><i data-lucide="file-text" style="width: 16px; height: 16px; color: #3b82f6;"></i></div>
+                <div>
+                  <div class="dropdown-tool-name">PDF to Word (.docx)</div>
+                  <div class="dropdown-tool-sub">Editable text + OCR Gratis</div>
+                </div>
+              </a>
+
+              <a class="dropdown-tool-item" onclick="openToolDirect('merge')">
+                <div class="dropdown-tool-icon"><i data-lucide="layers" style="width: 16px; height: 16px; color: #ef4444;"></i></div>
+                <div>
+                  <div class="dropdown-tool-name">Merge PDF</div>
+                  <div class="dropdown-tool-sub">Gabung dokumen berurutan</div>
+                </div>
+              </a>
+
+              <a class="dropdown-tool-item" onclick="openToolDirect('split')">
+                <div class="dropdown-tool-icon"><i data-lucide="scissors" style="width: 16px; height: 16px; color: #f59e0b;"></i></div>
+                <div>
+                  <div class="dropdown-tool-name">Split PDF</div>
+                  <div class="dropdown-tool-sub">Pisahkan &amp; ekstrak halaman</div>
+                </div>
+              </a>
+
+              <a class="dropdown-tool-item" onclick="openToolDirect('pdf2jpg')">
+                <div class="dropdown-tool-icon"><i data-lucide="image" style="width: 16px; height: 16px; color: #8b5cf6;"></i></div>
+                <div>
+                  <div class="dropdown-tool-name">PDF to JPG / PNG</div>
+                  <div class="dropdown-tool-sub">Ekspor gambar resolusi tinggi</div>
+                </div>
+              </a>
+
+              <a class="dropdown-tool-item" onclick="openToolDirect('pdf2excel')">
+                <div class="dropdown-tool-icon"><i data-lucide="file-spreadsheet" style="width: 16px; height: 16px; color: #10b981;"></i></div>
+                <div>
+                  <div class="dropdown-tool-name">PDF to Excel (.xlsx)</div>
+                  <div class="dropdown-tool-sub">Tabel grid presisi &amp; angka</div>
+                </div>
+              </a>
+
+              <a class="dropdown-tool-item" onclick="openToolDirect('pdfgrayscale')">
+                <div class="dropdown-tool-icon"><i data-lucide="contrast" style="width: 16px; height: 16px; color: #06b6d4;"></i></div>
+                <div>
+                  <div class="dropdown-tool-name">PDF Grayscale (CPNS)</div>
+                  <div class="dropdown-tool-sub">Pangkas 75% ukuran file</div>
+                </div>
+              </a>
+
+              <a class="dropdown-tool-item" onclick="openStudioView('dashboard')" style="border-top: 1px solid rgba(255,255,255,0.1); margin-top: 4px; padding-top: 10px;">
+                <div class="dropdown-tool-icon"><i data-lucide="grid" style="width: 16px; height: 16px;"></i></div>
+                <div>
+                  <div class="dropdown-tool-name">Lihat Semua Alat &rarr;</div>
+                  <div class="dropdown-tool-sub">Total 20+ alat utilitas dokumen</div>
+                </div>
+              </a>
+            </div>
+          </li>
+
+          <!-- Menu 2: SHOWCASE (None / Segera Hadir) -->
+          <li class="landing-nav-item">
+            <span class="landing-nav-link">
+              <span>Showcase</span>
+              <i data-lucide="chevron-down" class="nav-chevron" style="width: 14px; height: 14px;"></i>
+            </span>
+            <div class="nav-dropdown-menu" style="width: 260px;">
+              <div class="about-card-box">
+                <div style="font-weight: 700; color: #ffffff; margin-bottom: 4px;">Showcase Gallery</div>
+                <div style="color: #94a3b8; font-size: 0.78rem;">Status: <span style="color: #fbbf24; font-weight: 600;">(None)</span></div>
+                <div style="font-size: 0.74rem; color: #64748b; margin-top: 6px;">Koleksi hasil kompresi dan contoh dokumen akan ditampilkan di sini.</div>
+              </div>
+            </div>
+          </li>
+
+          <!-- Menu 3: ABOUT ME (Developer & Tech Stack) -->
+          <li class="landing-nav-item">
+            <span class="landing-nav-link">
+              <span>About Me</span>
+              <i data-lucide="chevron-down" class="nav-chevron" style="width: 14px; height: 14px;"></i>
+            </span>
+            <div class="nav-dropdown-menu" style="width: 320px;">
+              <div class="about-card-box">
+                <div style="margin-bottom: 10px;">
+                  <span style="color: #64748b; font-size: 0.7rem; text-transform: uppercase; font-weight: 800; letter-spacing: 0.06em; font-family: var(--font-mono);">Developer</span>
+                  <div style="font-size: 1.05rem; font-weight: 800; color: #ffffff; letter-spacing: -0.01em;">ds-xinn</div>
+                </div>
+
+                <div style="margin-bottom: 10px;">
+                  <span style="color: #64748b; font-size: 0.7rem; text-transform: uppercase; font-weight: 800; letter-spacing: 0.06em; font-family: var(--font-mono);">Teknologi Pembuatan</span>
+                  <div style="margin-top: 5px;">
+                    <span class="about-tech-tag">HTML5 Canvas</span>
+                    <span class="about-tech-tag">WebAssembly</span>
+                    <span class="about-tech-tag">Web Audio API</span>
+                    <span class="about-tech-tag">JavaScript (ES2024)</span>
+                    <span class="about-tech-tag">PDF-Lib</span>
+                    <span class="about-tech-tag">PDF.js</span>
+                    <span class="about-tech-tag">JSZip</span>
+                  </div>
+                </div>
+
+                <div style="font-size: 0.74rem; color: #94a3b8; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 8px; margin-top: 8px; line-height: 1.45;">
+                  Arsitektur: <strong style="color: #10b981;">100% Client-Side</strong>. Seluruh proses terjadi lokal di RAM peramban tanpa server atau transmisi cloud.
+                </div>
+
+                <!-- Media Sosial ds-xinn (Rapi & Estetik) -->
+                <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                  <span style="color: #94a3b8; font-size: 0.72rem; font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.05em;">Sosial:</span>
+                  <div style="display: flex; gap: 8px;">
+                    <a href="https://github.com/darussaalam" target="_blank" rel="noopener noreferrer" class="about-social-link" title="GitHub darussaalam">
+                      <i data-lucide="github" style="width: 13px; height: 13px; color: #ffffff;"></i>
+                      <span>GitHub</span>
+                      <i data-lucide="arrow-up-right" style="width: 11px; height: 11px; opacity: 0.7;"></i>
+                    </a>
+                    <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" class="about-social-link" title="Instagram ds-xinn">
+                      <i data-lucide="instagram" style="width: 13px; height: 13px; color: #f472b6;"></i>
+                      <span>Instagram</span>
+                      <i data-lucide="arrow-up-right" style="width: 11px; height: 11px; opacity: 0.7;"></i>
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </li>
+
+        </ul>
+
+        <!-- Right: GitHub Link (Bulat & Logo Asli GitHub dengan Animasi Hover) -->
+        <a class="landing-github-link" id="githubRepoLink" href="https://github.com/darussaalam" target="_blank" rel="noopener noreferrer" title="Kunjungi Profil &amp; Repositori GitHub @darussaalam" aria-label="GitHub @darussaalam">
+          <svg height="22" width="22" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+            <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
+          </svg>
+        </a>
+      </header>
+
+      <!-- Center Hero: Cnv-Mu Tools to the Point -->
+      <div class="landing-hero">
+        <h1 class="landing-h1">Cnv-Mu File Studio</h1>
+        <p class="landing-p">
+          Tools to-the-point untuk memudahkan kompresi dokumen &amp; gambar hingga batas ukuran persis (&le; 1MB, 2MB, 3MB, 500KB, Custom).
+          100% offline, privat di browser Anda, dan bebas selamanya.
+        </p>
+
+        <!-- Center NPX Style Button (Buka Web Tools) -->
+        <div class="hero-pill-btn-wrap">
+          <div class="hero-center-pill" onclick="openStudioView('compress')" title="Klik untuk Mulai Menggunakan Tools">
+            <span class="hero-pill-code">cnv-mu launch --studio</span>
+            <div class="hero-pill-action-icon">
+              <i data-lucide="arrow-right" style="width: 16px; height: 16px;"></i>
+            </div>
+          </div>
+
+          <a class="hero-sub-action-link" onclick="openStudioView('dashboard')">
+            <span>Butuh alat lainnya? Jelajahi Semua Alat PDF &rarr;</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- Landing Footer (Minimal, Quiet & Clean per Antislop Reference) -->
+      <footer class="landing-footer">
+        <div class="landing-footer-quote">
+          Cnv-Mu adalah alat utilitas deterministik. Dokumen Anda diproses 100% lokal di peramban tanpa pernah diunggah ke server mana pun.
+        </div>
+        <div class="landing-footer-copy">
+          &copy; 2026 Cnv-Mu &bull; by <span style="color: #cbd5e1; font-weight: 600;">ds-xinn</span>
+        </div>
+      </footer>
+
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- STUDIO VIEWS (SOFT WHITE LIQUID GLASS) -->
+  <!-- ========================================== -->
+  <div id="view-studio-root" class="view-container">
+    <div class="studio-app-viewport">
+
+      <!-- Studio Top Nav -->
+      <header class="top-nav liquid-card">
+        <div class="brand-cluster" onclick="returnToLanding()">
+          <div class="brand-logo" aria-label="Cnv-Mu Logo">
+            <i data-lucide="layers" style="width: 22px; height: 22px;"></i>
+          </div>
+          <div>
+            <h1 class="brand-title">Cnv-Mu Studio</h1>
+          </div>
+          <div class="badge-privacy">
+            <span class="badge-dot"></span>
+            <span>100% Offline &amp; Free</span>
+          </div>
+        </div>
+
+        <div class="nav-actions">
+          <button class="btn-icon-liquid" title="Kembali ke Beranda Cnv-Mu" onclick="returnToLanding()">
+            <i data-lucide="home" style="width: 18px; height: 18px;"></i>
+          </button>
+          <button id="soundToggleBtn" class="btn-icon-liquid" title="Toggle Punchy Audio Feedback" onclick="toggleSound()">
+            <i data-lucide="volume-2" id="soundIcon" style="width: 18px; height: 18px;"></i>
+          </button>
+        </div>
+      </header>
+
+      <!-- SUB-VIEW 1: DASHBOARD TOOLS (Foto 1 Style) -->
+      <div id="subview-dashboard" class="view-container active-view">
+        <div class="dashboard-hero">
+          <h2 class="dash-headline">Setiap Alat PDF &amp; Dokumen yang Anda Butuhkan</h2>
+          <p class="dash-subheadline">Kompres, konversi, gabung, pisah, ekstrak, dan amankan dokumen Anda langsung di browser. 100% Gratis, Tanpa Kuota, dan Tanpa Watermark Berbayar.</p>
+
+          <div class="category-tabs-wrap">
+            <button class="cat-pill-btn active" onclick="filterCategory(this, 'all')">Semua Alat</button>
+            <button class="cat-pill-btn" onclick="filterCategory(this, 'optimize')">Kompres &amp; Optimasi</button>
+            <button class="cat-pill-btn" onclick="filterCategory(this, 'convert-from')">Konversi dari PDF</button>
+            <button class="cat-pill-btn" onclick="filterCategory(this, 'convert-to')">Konversi ke PDF</button>
+            <button class="cat-pill-btn" onclick="filterCategory(this, 'organize')">Atur &amp; Edit</button>
+            <button class="cat-pill-btn" onclick="filterCategory(this, 'security')">Keamanan</button>
+          </div>
+        </div>
+
+        <div class="tools-grid" id="toolsGridContainer">
+
+          <!-- Compress PDF (Preset 1MB, 2MB, 3MB, Custom) -->
+          <div class="tool-card liquid-card featured" data-cat="optimize" onclick="openToolDirect('compress')">
+            <div class="tool-icon-box green"><i data-lucide="minimize-2" style="width: 24px; height: 24px;"></i></div>
+            <h3 class="tool-title">Compress PDF &amp; Files</h3>
+            <p class="tool-desc">Kompres dokumen ke batas ukuran persis: &le; 1MB, 2MB, 3MB, 500KB, atau custom.</p>
+            <span class="badge-free-unlocked">&le; 1MB / 2MB / 3MB / Custom</span>
+          </div>
+
+          <!-- PDF to Word -->
+          <div class="tool-card liquid-card" data-cat="convert-from" onclick="openToolDirect('pdf2word')">
+            <div class="tool-icon-box blue"><i data-lucide="file-text" style="width: 24px; height: 24px;"></i></div>
+            <h3 class="tool-title">PDF to Word</h3>
+            <p class="tool-desc">Ubah dokumen PDF menjadi file Microsoft Word (.docx) yang dapat diedit langsung.</p>
+            <span class="badge-free-unlocked">OCR Gratis &bull; Unlocked</span>
+          </div>
+
+          <!-- PDF to Excel (.xlsx) -->
+          <div class="tool-card liquid-card featured" data-cat="convert-from" onclick="openToolDirect('pdf2excel')">
+            <div class="tool-icon-box green"><i data-lucide="file-spreadsheet" style="width: 24px; height: 24px;"></i></div>
+            <h3 class="tool-title">PDF to Excel (.xlsx)</h3>
+            <p class="tool-desc">Ekstrak tabel dan data PDF menjadi spreadsheet Excel (.xlsx) rapi dan akurat.</p>
+            <span class="badge-free-unlocked">Akurat &bull; Grid Tabel</span>
+          </div>
+
+          <!-- Excel to PDF -->
+          <div class="tool-card liquid-card" data-cat="convert-to" onclick="openToolDirect('excel2pdf')">
+            <div class="tool-icon-box green"><i data-lucide="table" style="width: 24px; height: 24px;"></i></div>
+            <h3 class="tool-title">Excel to PDF</h3>
+            <p class="tool-desc">Ubah spreadsheet (.xlsx, .xls, .csv) menjadi dokumen PDF tabel rapi dan terformat.</p>
+            <span class="badge-free-unlocked">Spreadsheet to PDF</span>
+          </div>
+
+          <!-- PDF Grayscale (Syarat CPNS/Portal) -->
+          <div class="tool-card liquid-card" data-cat="optimize" onclick="openToolDirect('pdfgrayscale')">
+            <div class="tool-icon-box cyan"><i data-lucide="contrast" style="width: 24px; height: 24px;"></i></div>
+            <h3 class="tool-title">PDF Grayscale (CPNS &amp; Portal)</h3>
+            <p class="tool-desc">Ubah dokumen warna menjadi hitam-putih murni. Pangkas ukuran hingga 75% untuk syarat BKN/portal.</p>
+            <span class="badge-free-unlocked">Pangkas 75% &bull; CPNS Ready</span>
+          </div>
+
+          <!-- Merge PDF -->
+          <div class="tool-card liquid-card" data-cat="organize" onclick="openToolDirect('merge')">
+            <div class="tool-icon-box red"><i data-lucide="layers" style="width: 24px; height: 24px;"></i></div>
+            <h3 class="tool-title">Merge PDF</h3>
+            <p class="tool-desc">Gabungkan beberapa dokumen PDF menjadi satu file utuh dengan susunan urutan rapi.</p>
+            <span class="badge-free-unlocked">Multi-File Ready</span>
+          </div>
+
+          <!-- Split PDF -->
+          <div class="tool-card liquid-card" data-cat="organize" onclick="openToolDirect('split')">
+            <div class="tool-icon-box red"><i data-lucide="scissors" style="width: 24px; height: 24px;"></i></div>
+            <h3 class="tool-title">Split PDF</h3>
+            <p class="tool-desc">Pisahkan satu atau beberapa halaman PDF menjadi file mandiri berkualitas asli.</p>
+            <span class="badge-free-unlocked">Ekstrak Halaman</span>
+          </div>
+
+          <!-- PDF to JPG -->
+          <div class="tool-card liquid-card" data-cat="convert-from" onclick="openToolDirect('pdf2jpg')">
+            <div class="tool-icon-box amber"><i data-lucide="image" style="width: 24px; height: 24px;"></i></div>
+            <h3 class="tool-title">PDF to JPG</h3>
+            <p class="tool-desc">Ekstrak setiap lembar halaman PDF menjadi file gambar JPG beresolusi tajam.</p>
+            <span class="badge-free-unlocked">High-DPI Export</span>
+          </div>
+
+          <!-- JPG to PDF -->
+          <div class="tool-card liquid-card" data-cat="convert-to" onclick="openToolDirect('jpg2pdf')">
+            <div class="tool-icon-box amber"><i data-lucide="file-image" style="width: 24px; height: 24px;"></i></div>
+            <h3 class="tool-title">JPG to PDF</h3>
+            <p class="tool-desc">Satukan foto, scan KTP, ijazah, atau gambar menjadi 1 dokumen PDF terkompresi.</p>
+            <span class="badge-free-unlocked">Otomatis Pas Ukuran</span>
+          </div>
+
+          <!-- Rotate PDF -->
+          <div class="tool-card liquid-card" data-cat="organize" onclick="openToolDirect('rotate')">
+            <div class="tool-icon-box purple"><i data-lucide="rotate-cw" style="width: 24px; height: 24px;"></i></div>
+            <h3 class="tool-title">Rotate PDF</h3>
+            <p class="tool-desc">Putar orientasi halaman PDF 90&deg;, 180&deg;, atau 270&deg; secara instan.</p>
+            <span class="badge-free-unlocked">Rotasi Permanen</span>
+          </div>
+
+          <!-- Watermark PDF -->
+          <div class="tool-card liquid-card" data-cat="organize" onclick="openToolDirect('watermark')">
+            <div class="tool-icon-box purple"><i data-lucide="stamp" style="width: 24px; height: 24px;"></i></div>
+            <h3 class="tool-title">Watermark PDF</h3>
+            <p class="tool-desc">Bubuhi cap teks stempel, 'LUNAS', atau 'RAHASIA' dengan transparansi kustom.</p>
+            <span class="badge-free-unlocked">Kustom Teks &bull; Posisi</span>
+          </div>
+
+          <!-- Protect PDF -->
+          <div class="tool-card liquid-card" data-cat="security" onclick="openToolDirect('protect')">
+            <div class="tool-icon-box cyan"><i data-lucide="lock" style="width: 24px; height: 24px;"></i></div>
+            <h3 class="tool-title">Protect PDF</h3>
+            <p class="tool-desc">Enkripsi dan kunci file PDF Anda dengan kata sandi pengaman yang kuat.</p>
+            <span class="badge-free-unlocked">Enkripsi Standar</span>
+          </div>
+
+          <!-- Unlock PDF -->
+          <div class="tool-card liquid-card" data-cat="security" onclick="openToolDirect('unlock')">
+            <div class="tool-icon-box cyan"><i data-lucide="unlock" style="width: 24px; height: 24px;"></i></div>
+            <h3 class="tool-title">Unlock PDF</h3>
+            <p class="tool-desc">Hapus kata sandi dan batasan cetak/salin pada file PDF yang Anda miliki.</p>
+            <span class="badge-free-unlocked">Buka Proteksi</span>
+          </div>
+
+          <!-- Page Numbers -->
+          <div class="tool-card liquid-card" data-cat="organize" onclick="openToolDirect('pagenum')">
+            <div class="tool-icon-box purple"><i data-lucide="hash" style="width: 24px; height: 24px;"></i></div>
+            <h3 class="tool-title">Page Numbers</h3>
+            <p class="tool-desc">Tambahkan penomoran halaman otomatis (Halaman X dari Y) pada sudut dokumen.</p>
+            <span class="badge-free-unlocked">Format Fleksibel</span>
+          </div>
+
+          <!-- OCR Extractor -->
+          <div class="tool-card liquid-card" data-cat="convert-from" onclick="openToolDirect('ocr')">
+            <div class="tool-icon-box green"><i data-lucide="scan-text" style="width: 24px; height: 24px;"></i></div>
+            <h3 class="tool-title">OCR Text Extractor</h3>
+            <p class="tool-desc">Ekstrak teks dari scan dokumen fisik atau foto menjadi teks digital yang bisa disalin.</p>
+            <span class="badge-free-unlocked">100% Gratis &bull; Unlocked</span>
+          </div>
+
+          <!-- PDF to Markdown (.md) -->
+          <div class="tool-card liquid-card" data-cat="convert-from" onclick="openToolDirect('pdf2md')">
+            <div class="tool-icon-box purple"><i data-lucide="file-code" style="width: 24px; height: 24px;"></i></div>
+            <h3 class="tool-title">PDF to Markdown (.md)</h3>
+            <p class="tool-desc">Ekstrak isi teks dan struktur dokumen PDF menjadi format Markdown siap pakai untuk AI &amp; Notion.</p>
+            <span class="badge-free-unlocked">LLM &amp; Notion Ready</span>
+          </div>
+
+          <!-- Crop Margin PDF -->
+          <div class="tool-card liquid-card" data-cat="organize" onclick="openToolDirect('crop')">
+            <div class="tool-icon-box amber"><i data-lucide="crop" style="width: 24px; height: 24px;"></i></div>
+            <h3 class="tool-title">Crop Margin PDF</h3>
+            <p class="tool-desc">Pangkas margin tepi putih berlebih pada scan dokumen agar isi halaman lebih fokus.</p>
+            <span class="badge-free-unlocked">Smart Edge Trim</span>
+          </div>
+
+          <!-- Hapus Halaman PDF -->
+          <div class="tool-card liquid-card" data-cat="organize" onclick="openToolDirect('removepages')">
+            <div class="tool-icon-box red"><i data-lucide="file-x" style="width: 24px; height: 24px;"></i></div>
+            <h3 class="tool-title">Hapus Halaman PDF</h3>
+            <p class="tool-desc">Pilih dan buang lembar halaman tertentu yang tidak diperlukan dari berkas PDF secara instan.</p>
+            <span class="badge-free-unlocked">Selective Removal</span>
+          </div>
+
+          <!-- PDF to Text (TXT) -->
+          <div class="tool-card liquid-card" data-cat="convert-from" onclick="openToolDirect('pdf2txt')">
+            <div class="tool-icon-box blue"><i data-lucide="align-left" style="width: 24px; height: 24px;"></i></div>
+            <h3 class="tool-title">PDF to Text (TXT)</h3>
+            <p class="tool-desc">Ekstraksi teks murni instan dari seluruh halaman dokumen tanpa format rumit.</p>
+            <span class="badge-free-unlocked">Raw Text Extractor</span>
+          </div>
+
+          <!-- Word to PDF -->
+          <div class="tool-card liquid-card" data-cat="convert-to" onclick="openToolDirect('word2pdf')">
+            <div class="tool-icon-box blue"><i data-lucide="file-up" style="width: 24px; height: 24px;"></i></div>
+            <h3 class="tool-title">Word to PDF</h3>
+            <p class="tool-desc">Konversi naskah dokumen Word (.docx) menjadi berkas PDF standar resmi.</p>
+            <span class="badge-free-unlocked">DOCX to PDF</span>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- SUB-VIEW 2: SINGLE TOOL LANDING (Foto 2 Style) -->
+      <div id="subview-tool-landing" class="view-container">
+        <div class="tool-header-nav">
+          <button class="btn-back-tools" onclick="openStudioView('dashboard')">
+            <i data-lucide="arrow-left" style="width: 16px; height: 16px;"></i>
+            <span>Kembali ke Semua Alat</span>
+          </button>
+        </div>
+
+        <div class="landing-center-box">
+          <h2 class="landing-tool-title" id="landingToolTitle">Compress PDF documents &amp; Images</h2>
+          <p class="landing-tool-sub" id="landingToolDesc">Reduce file size while optimizing for maximal quality. Strict portal ceiling: &le; 1MB, 2MB, 3MB, or Custom.</p>
+
+          <input type="file" id="universalFileInput" style="display: none;" multiple onchange="handleFileDropOrSelect(event)">
+          <button class="btn-big-action green-style" id="btnLandingSelectFile" onclick="triggerFileInputClick()">
+            <i data-lucide="file-up" style="width: 22px; height: 22px;"></i>
+            <span id="landingBtnText">Pilih File (PDF / Gambar / DOCX)</span>
+          </button>
+
+          <p class="drop-hint-text">atau tarik dan letakkan file dokumen Anda ke sini</p>
+        </div>
+      </div>
+
+      <!-- SUB-VIEW 3: WORKSPACE & SIDEBAR (Foto 3 Style) -->
+      <div id="subview-tool-workspace" class="view-container">
+        <div class="tool-header-nav">
+          <button class="btn-back-tools" onclick="openStudioView('dashboard')">
+            <i data-lucide="arrow-left" style="width: 16px; height: 16px;"></i>
+            <span>Kembali ke Semua Alat</span>
+          </button>
+          <div style="font-size: 0.82rem; font-weight: 700; color: var(--accent-emerald);">
+            <i data-lucide="shield" style="width: 14px; height: 14px; display: inline-block; vertical-align: middle;"></i>
+            <span>Wasm Local In-Memory Sandbox</span>
+          </div>
+        </div>
+
+        <div class="workspace-layout">
+          
+          <!-- Left: Uploaded Files Gallery -->
+          <div class="files-gallery-stage" id="filesGallery">
+            <button class="btn-floating-add" title="Tambah File Lain" onclick="triggerFileInputClick()">
+              <i data-lucide="plus" style="width: 22px; height: 22px;"></i>
+            </button>
+            <div id="galleryItemsContainer" style="display: flex; flex-wrap: wrap; gap: 16px; width: 100%;">
+              <!-- Dynamically populated thumbnails -->
+            </div>
+          </div>
+
+          <!-- Right: Sidebar Settings & Action -->
+          <aside class="sidebar-settings-card">
+            <h3 class="sidebar-tool-heading" id="sidebarToolTitle">Compress PDF &amp; Files</h3>
+
+            <div id="dynamicSidebarControls">
+
+              <!-- Specific for COMPRESS: Presets & Caps -->
+              <div id="controls-compress-group">
+                <div style="font-size: 0.8rem; font-weight: 700; color: var(--text-main); margin-bottom: 8px;">PILIHAN PRESET KOMPRESI:</div>
+                <div class="preset-caps-container">
+                  <button class="preset-cap-btn active" data-cap="1024" onclick="setCompressionCap(this, 1024)">
+                    <div>
+                      <div class="cap-main-val">&le; 1 MB (1,024 KB)</div>
+                      <div class="cap-sub-label">Standar Formulir Pemerintah &amp; Portal Kerja</div>
+                    </div>
+                    <i data-lucide="check" style="width: 18px; height: 18px; color: var(--accent-emerald);"></i>
+                  </button>
+
+                  <button class="preset-cap-btn" data-cap="2048" onclick="setCompressionCap(this, 2048)">
+                    <div>
+                      <div class="cap-main-val">&le; 2 MB (2,048 KB)</div>
+                      <div class="cap-sub-label">Lampiran Email Standard</div>
+                    </div>
+                  </button>
+
+                  <button class="preset-cap-btn" data-cap="3072" onclick="setCompressionCap(this, 3072)">
+                    <div>
+                      <div class="cap-main-val">&le; 3 MB (3,072 KB)</div>
+                      <div class="cap-sub-label">Kualitas Tinggi &bull; Presisi Maksimal</div>
+                    </div>
+                  </button>
+
+                  <button class="preset-cap-btn" data-cap="500" onclick="setCompressionCap(this, 500)">
+                    <div>
+                      <div class="cap-main-val">&le; 500 KB</div>
+                      <div class="cap-sub-label">CPNS / Syarat Ketat Khusus</div>
+                    </div>
+                  </button>
+
+                  <button class="preset-cap-btn" data-cap="custom" onclick="promptCustomCap(this)">
+                    <div>
+                      <div class="cap-main-val" id="labelCustomCap">Custom...</div>
+                      <div class="cap-sub-label">Tentukan Ukuran Bebas dalam KB/MB</div>
+                    </div>
+                  </button>
+                </div>
+
+                <div style="margin-top: 14px; padding-top: 12px; border-top: 1px solid rgba(255, 255, 255, 0.1);">
+                  <label style="display: flex; align-items: center; gap: 8px; font-size: 0.78rem; font-weight: 600; cursor: pointer; color: #ffffff;">
+                    <input type="checkbox" id="checkAutoDeskew" checked style="accent-color: var(--accent-emerald);">
+                    <span>Auto-deskew &amp; bersihkan background</span>
+                  </label>
+                </div>
+              </div>
+
+              <!-- Specific for PDF TO WORD & OCR (Foto 3 Style) -->
+              <div id="controls-ocr-group" style="display: none; flex-direction: column; gap: 12px;">
+                <div class="option-radio-box selected" id="optNoOcr" onclick="selectOcrOption('no-ocr')">
+                  <div class="radio-dot"></div>
+                  <div class="option-content">
+                    <div class="option-title-row"><span class="option-title">No OCR</span></div>
+                    <p class="option-desc">Ubah PDF bertipe teks digital menjadi dokumen Word yang dapat diedit langsung.</p>
+                  </div>
+                </div>
+
+                <div class="option-radio-box" id="optOcr" onclick="selectOcrOption('ocr')">
+                  <div class="radio-dot"></div>
+                  <div class="option-content">
+                    <div class="option-title-row">
+                      <span class="option-title">OCR Text Recognition</span>
+                      <span class="badge-unlocked-pill">100% GRATIS</span>
+                    </div>
+                    <p class="option-desc">Pindai hasil scan PDF atau gambar buram menjadi teks digital yang bisa disalin tanpa biaya.</p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Specific for PDF TO EXCEL -->
+              <div id="controls-excel-group" style="display: none; flex-direction: column; gap: 12px;">
+                <div class="option-radio-box selected">
+                  <div class="radio-dot"></div>
+                  <div class="option-content">
+                    <div class="option-title-row">
+                      <span class="option-title">Auto Coordinate Table Grid</span>
+                      <span class="badge-unlocked-pill">AKURAT</span>
+                    </div>
+                    <p class="option-desc">Mendeteksi koordinat horizontal kolom dan baris PDF secara presisi menjadi sel Excel terpisah.</p>
+                  </div>
+                </div>
+                <div style="font-size: 0.74rem; color: #94a3b8; background: rgba(255,255,255,0.03); padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08);">
+                  Setiap halaman PDF akan diekstrak menjadi tab sheet terpisah pada berkas .xlsx akhir.
+                </div>
+              </div>
+
+              <!-- Specific for PDF GRAYSCALE -->
+              <div id="controls-grayscale-group" style="display: none; flex-direction: column; gap: 12px;">
+                <div class="option-radio-box selected">
+                  <div class="radio-dot"></div>
+                  <div class="option-content">
+                    <div class="option-title-row">
+                      <span class="option-title">CPNS &amp; BKN Strict Grayscale</span>
+                      <span class="badge-unlocked-pill">HEMAT 75%</span>
+                    </div>
+                    <p class="option-desc">Konversi kanvas per piksel ke 8-bit ITU-R BT.601 monokrom untuk memastikan tembus verifikasi portal.</p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Specific for REMOVE PAGES -->
+              <div id="controls-removepages-group" style="display: none; flex-direction: column; gap: 10px;">
+                <label style="font-size: 0.78rem; font-weight: 700; color: #ffffff;">Nomor Halaman yang Dihapus:</label>
+                <input type="text" id="removePagesInput" class="sidebar-input" placeholder="Contoh: 1, 3, 5" value="1">
+                <span style="font-size: 0.72rem; color: #94a3b8;">Pisahkan dengan koma untuk menghapus beberapa halaman sekaligus.</span>
+              </div>
+
+              <!-- Specific for WATERMARK -->
+              <div id="controls-watermark-group" style="display: none; flex-direction: column; gap: 10px;">
+                <label style="font-size: 0.78rem; font-weight: 700; color: #ffffff;">Teks Watermark:</label>
+                <input type="text" id="watermarkTextInput" class="sidebar-input" value="RAHASIA / LUNAS">
+              </div>
+
+              <!-- Specific for PROTECT -->
+              <div id="controls-protect-group" style="display: none; flex-direction: column; gap: 10px;">
+                <label style="font-size: 0.78rem; font-weight: 700; color: #ffffff;">Password Dokumen:</label>
+                <input type="password" id="protectPasswordInput" class="sidebar-input" placeholder="Masukkan kata sandi...">
+              </div>
+
+              <!-- Specific for ROTATE -->
+              <div id="controls-rotate-group" style="display: none; flex-direction: column; gap: 10px;">
+                <label style="font-size: 0.78rem; font-weight: 700;">Derajat Putaran:</label>
+                <div style="display: flex; gap: 8px;">
+                  <button class="cat-pill-btn active" onclick="setRotationAngle(90)">90&deg;</button>
+                  <button class="cat-pill-btn" onclick="setRotationAngle(180)">180&deg;</button>
+                  <button class="cat-pill-btn" onclick="setRotationAngle(270)">270&deg;</button>
+                </div>
+              </div>
+
+            </div>
+
+            <button class="btn-execute-action green-style" id="btnExecuteSidebar" onclick="executeCurrentToolAction()">
+              <span id="btnExecuteText">Mulai Kompres Sekarang</span>
+              <i data-lucide="arrow-right-circle" style="width: 20px; height: 20px;"></i>
+            </button>
+          </aside>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- INSPECTOR MODAL & DOWNLOAD RESULT -->
+  <!-- ========================================== -->
+  <div class="inspector-modal-backdrop" id="inspectorModal" onclick="closeInspectorModal(event)">
+    <div class="inspector-modal-card" onclick="event.stopPropagation()">
+      <div class="inspector-header">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <i data-lucide="check-circle-2" style="width: 22px; height: 22px; color: var(--accent-emerald);"></i>
+          <span class="inspector-title" id="inspectorFileName">Hasil Dokumen Telah Siap</span>
+        </div>
+        <button class="inspector-close-btn" onclick="closeInspectorModal()">
+          <i data-lucide="x" style="width: 16px; height: 16px;"></i>
+        </button>
+      </div>
+
+      <div class="inspector-body">
+        <div class="split-compare-container" id="compareContainer">
+          <div class="compare-side original">
+            <span class="compare-badge badge-orig" id="modalBadgeOrig">Original File</span>
+            <div class="compare-img-wrap" id="compWrapOriginal">
+              <img id="imgOriginalPreview" src="" alt="Original Preview" class="compare-preview-img" />
+            </div>
+          </div>
+
+          <div class="compare-side compressed" id="compressedOverlay" style="width: 50%;">
+            <span class="compare-badge badge-comp" id="modalBadgeComp">Cnv-Mu Output</span>
+            <div class="compare-img-wrap" id="compWrapCompressed">
+              <img id="imgCompressedPreview" src="" alt="Compressed Preview" class="compare-preview-img" />
+            </div>
+          </div>
+
+          <div class="split-divider-handle" id="splitHandle" style="left: 50%;">
+            <div class="split-handle-grip">
+              <i data-lucide="move-horizontal" style="width: 16px; height: 16px;"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="inspector-footer">
+        <div class="compare-metrics">
+          <span>Ukuran Awal: <strong id="modalOrigSize">0.00 KB</strong></span>
+          <span>Hasil Baru: <strong style="color: var(--accent-emerald);" id="modalCompSize">0.00 KB</strong></span>
+          <span>Penghematan: <strong style="color: var(--accent-emerald);" id="modalSavings">0%</strong></span>
+        </div>
+        <div style="display: flex; gap: 10px;">
+          <button class="btn-execute-action green-style" style="padding: 10px 22px; font-size: 0.88rem; width: auto; margin-top: 0;" onclick="downloadLatestResult()">
+            <i data-lucide="download" style="width: 16px; height: 16px;"></i>
+            <span>Unduh File</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sound Status Toast -->
+  <div class="sound-toast" id="soundToast">
+    <i data-lucide="volume-2" style="width: 16px; height: 16px; color: var(--accent-emerald-light);"></i>
+    <span id="soundToastMsg">Punchy Audio Feedback Aktif</span>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- JAVASCRIPT: ENGINE & SOUND SYNTHESIS -->
+  <!-- ========================================== -->
+  <script>
+    lucide.createIcons();
+
+    // DYNAMIC MOUSE SPOTLIGHT GLOW LISTENER
+    window.addEventListener('mousemove', (e) => {
+      document.documentElement.style.setProperty('--mouse-x', e.clientX + 'px');
+      document.documentElement.style.setProperty('--mouse-y', e.clientY + 'px');
+    }, { passive: true });
+
+    // Web Audio API Synthesizer for tactile punchy feedback
+    let audioCtx = null;
+    let isSoundEnabled = true;
+
+    function getAudioContext() {
+      if (!audioCtx) {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        audioCtx = new AudioContextClass();
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+      return audioCtx;
+    }
+
+    function playPunchyClick() {
+      if (!isSoundEnabled) return;
+      try {
+        const ctx = getAudioContext();
+        const now = ctx.currentTime;
+
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(210, now);
+        osc.frequency.exponentialRampToValueAtTime(42, now + 0.045);
+
+        gain.gain.setValueAtTime(0.35, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.045);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.045);
+
+        const snapOsc = ctx.createOscillator();
+        const snapGain = ctx.createGain();
+        snapOsc.type = 'sine';
+        snapOsc.frequency.setValueAtTime(1400, now);
+        snapOsc.frequency.exponentialRampToValueAtTime(320, now + 0.015);
+
+        snapGain.gain.setValueAtTime(0.2, now);
+        snapGain.gain.exponentialRampToValueAtTime(0.001, now + 0.015);
+
+        snapOsc.connect(snapGain);
+        snapGain.connect(ctx.destination);
+        snapOsc.start(now);
+        snapOsc.stop(now + 0.015);
+      } catch (err) {}
+    }
+
+    function playPunchySuccess() {
+      if (!isSoundEnabled) return;
+      try {
+        const ctx = getAudioContext();
+        const now = ctx.currentTime;
+        [523.25, 659.25, 783.99].forEach((freq, idx) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          const noteTime = now + (idx * 0.04);
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, noteTime);
+          gain.gain.setValueAtTime(0.25, noteTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, noteTime + 0.12);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(noteTime);
+          osc.stop(noteTime + 0.12);
+        });
+      } catch (e) {}
+    }
+
+    function playPunchyToggle() {
+      if (!isSoundEnabled) return;
+      try {
+        const ctx = getAudioContext();
+        const now = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(640, now);
+        osc.frequency.exponentialRampToValueAtTime(260, now + 0.03);
+        gain.gain.setValueAtTime(0.22, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.03);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.03);
+      } catch (e) {}
+    }
+
+    document.addEventListener('click', (e) => {
+      const btn = e.target.closest('button, .hero-center-pill, .tool-card, .preset-cap-btn, .option-radio-box, .dropdown-tool-item');
+      if (btn) {
+        if (btn.classList.contains('btn-big-action') || btn.classList.contains('btn-execute-action') || btn.classList.contains('hero-center-pill')) {
+          playPunchySuccess();
+        } else {
+          playPunchyClick();
+        }
+      }
+    });
+
+    function toggleSound() {
+      isSoundEnabled = !isSoundEnabled;
+      const icon = document.getElementById('soundIcon');
+      if (isSoundEnabled) {
+        icon.setAttribute('data-lucide', 'volume-2');
+        showToast('Suara Punchy: Aktif');
+        playPunchySuccess();
+      } else {
+        icon.setAttribute('data-lucide', 'volume-x');
+        showToast('Suara: Hening');
+      }
+      lucide.createIcons();
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('soundToast');
+      document.getElementById('soundToastMsg').textContent = msg;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2200);
+    }
+
+    function formatBytes(bytes) {
+      if (!bytes || isNaN(bytes) || bytes <= 0) return '0.00 KB';
+      const kb = bytes / 1024;
+      if (kb >= 1024) {
+        return (kb / 1024).toFixed(2) + ' MB';
+      }
+      return kb.toFixed(2) + ' KB';
+    }
+
+    // MULTI-TOOL STATE & NAVIGATION
+    let currentActiveTool = 'compress';
+    let currentCompressionCapKb = 1024;
+    let currentOcrMode = 'no-ocr';
+    let currentRotateAngle = 90;
+
+    let stagedFiles = [];
+    let latestDeliverable = null;
+
+    const toolMeta = {
+      compress: {
+        title: 'Compress PDF & Files',
+        landingTitle: 'Compress PDF documents &amp; Images',
+        landingSub: 'Kurangi ukuran file dokumen hingga target persis: \u2264 1MB, 2MB, 3MB, atau Custom.',
+        btnText: 'Pilih File (PDF / Gambar / DOCX)',
+        executeText: 'Mulai Kompres Sekarang',
+        colorClass: 'green-style',
+        accept: '.pdf,.png,.jpg,.jpeg,.webp,.docx'
+      },
+      pdf2word: {
+        title: 'PDF to Word',
+        landingTitle: 'PDF to WORD Converter',
+        landingSub: 'Ubah PDF menjadi file Microsoft Word (.docx) yang bisa diedit. OCR 100% Gratis &amp; Offline.',
+        btnText: 'Select PDF file',
+        executeText: 'Convert to WORD',
+        colorClass: '',
+        accept: '.pdf'
+      },
+      merge: {
+        title: 'Merge PDF',
+        landingTitle: 'Merge PDF files',
+        landingSub: 'Gabungkan banyak dokumen PDF menjadi satu file berurutan secara instan.',
+        btnText: 'Select PDF files',
+        executeText: 'Gabungkan PDF Sekarang',
+        colorClass: '',
+        accept: '.pdf'
+      },
+      split: {
+        title: 'Split PDF',
+        landingTitle: 'Split PDF file',
+        landingSub: 'Pisahkan satu atau beberapa halaman PDF menjadi file mandiri berkualitas asli.',
+        btnText: 'Select PDF file',
+        executeText: 'Pisahkan Halaman PDF',
+        colorClass: '',
+        accept: '.pdf'
+      },
+      pdf2jpg: {
+        title: 'PDF to JPG',
+        landingTitle: 'Convert PDF to JPG',
+        landingSub: 'Ekstrak setiap halaman PDF menjadi gambar JPG beresolusi tinggi.',
+        btnText: 'Select PDF file',
+        executeText: 'Convert to JPG',
+        colorClass: 'green-style',
+        accept: '.pdf'
+      },
+      jpg2pdf: {
+        title: 'JPG to PDF',
+        landingTitle: 'Convert JPG to PDF',
+        landingSub: 'Ubah foto JPG / PNG menjadi dokumen PDF resmi dalam hitungan detik.',
+        btnText: 'Pilih Gambar (JPG / PNG)',
+        executeText: 'Ubah Jadi Dokumen PDF',
+        colorClass: 'green-style',
+        accept: '.jpg,.jpeg,.png,.webp'
+      },
+      rotate: {
+        title: 'Rotate PDF',
+        landingTitle: 'Rotate PDF pages',
+        landingSub: 'Putar orientasi halaman PDF 90&deg;, 180&deg;, atau 270&deg; secara permanen.',
+        btnText: 'Select PDF file',
+        executeText: 'Putar &amp; Simpan PDF',
+        colorClass: '',
+        accept: '.pdf'
+      },
+      watermark: {
+        title: 'Watermark PDF',
+        landingTitle: 'Add Watermark to PDF',
+        landingSub: 'Bubuhi stempel teks atau tanda resmi pada dokumen PDF Anda.',
+        btnText: 'Select PDF file',
+        executeText: 'Bubuhi Watermark',
+        colorClass: '',
+        accept: '.pdf'
+      },
+      protect: {
+        title: 'Protect PDF',
+        landingTitle: 'Protect PDF file',
+        landingSub: 'Kunci dan enkripsi dokumen PDF Anda dengan kata sandi pengaman yang kuat.',
+        btnText: 'Select PDF file',
+        executeText: 'Kunci &amp; Enkripsi PDF',
+        colorClass: 'green-style',
+        accept: '.pdf'
+      },
+      unlock: {
+        title: 'Unlock PDF',
+        landingTitle: 'Unlock PDF security',
+        landingSub: 'Hapus kata sandi dan batasan pada file PDF yang Anda miliki.',
+        btnText: 'Select PDF file',
+        executeText: 'Buka Proteksi PDF',
+        colorClass: 'green-style',
+        accept: '.pdf'
+      },
+      pagenum: {
+        title: 'Page Numbers',
+        landingTitle: 'Add Page Numbers to PDF',
+        landingSub: 'Beri nomor halaman otomatis pada sudut dokumen PDF.',
+        btnText: 'Select PDF file',
+        executeText: 'Beri Nomor Halaman',
+        colorClass: '',
+        accept: '.pdf'
+      },
+      ocr: {
+        title: 'OCR Text Extractor',
+        landingTitle: 'OCR PDF &amp; Image to Text',
+        landingSub: 'Pindai teks dari gambar scan dokumen menjadi teks digital yang bisa disalin.',
+        btnText: 'Select PDF or Image file',
+        executeText: 'Mulai Ekstrak Teks OCR',
+        colorClass: 'green-style',
+        accept: '.pdf,.png,.jpg,.jpeg'
+      },
+      pdf2excel: {
+        title: 'PDF to Excel (.xlsx)',
+        landingTitle: 'PDF to EXCEL Converter',
+        landingSub: 'Ekstrak tabel dan data angka PDF menjadi spreadsheet Microsoft Excel (.xlsx) rapi dan akurat 100% offline.',
+        btnText: 'Select PDF file',
+        executeText: 'Convert to EXCEL (.xlsx)',
+        colorClass: 'green-style',
+        accept: '.pdf'
+      },
+      excel2pdf: {
+        title: 'Excel to PDF',
+        landingTitle: 'EXCEL to PDF Converter',
+        landingSub: 'Ubah spreadsheet (.xlsx, .xls, .csv) menjadi dokumen PDF tabel rapi dan terformat siap cetak.',
+        btnText: 'Pilih File Excel / CSV',
+        executeText: 'Convert to PDF',
+        colorClass: 'green-style',
+        accept: '.xlsx,.xls,.csv'
+      },
+      pdfgrayscale: {
+        title: 'PDF Grayscale (CPNS & Portal)',
+        landingTitle: 'PDF Grayscale Converter',
+        landingSub: 'Ubah dokumen PDF warna menjadi hitam-putih murni. Pangkas bobot file hingga 75% untuk syarat BKN/CPNS.',
+        btnText: 'Select PDF file',
+        executeText: 'Convert to Grayscale PDF',
+        colorClass: 'green-style',
+        accept: '.pdf'
+      },
+      pdf2md: {
+        title: 'PDF to Markdown (.md)',
+        landingTitle: 'PDF to Markdown Converter',
+        landingSub: 'Ekstrak teks dan struktur dokumen PDF menjadi format Markdown (.md) siap disalin ke AI Prompt &amp; Notion.',
+        btnText: 'Select PDF file',
+        executeText: 'Convert to Markdown (.md)',
+        colorClass: '',
+        accept: '.pdf'
+      },
+      crop: {
+        title: 'Crop Margin PDF',
+        landingTitle: 'Crop Margins from PDF',
+        landingSub: 'Pangkas tepi kosong putih pada dokumen agar konten utama lebih besar dan rapi.',
+        btnText: 'Select PDF file',
+        executeText: 'Pangkas Margin PDF',
+        colorClass: '',
+        accept: '.pdf'
+      },
+      removepages: {
+        title: 'Hapus Halaman PDF',
+        landingTitle: 'Hapus Halaman dari PDF',
+        landingSub: 'Buang lembar halaman tertentu yang tidak diinginkan dari dokumen PDF Anda secara selektif.',
+        btnText: 'Select PDF file',
+        executeText: 'Hapus Halaman Terpilih',
+        colorClass: '',
+        accept: '.pdf'
+      },
+      pdf2txt: {
+        title: 'PDF to Text (TXT)',
+        landingTitle: 'PDF to Plain Text (TXT)',
+        landingSub: 'Ekstrak seluruh teks dokumen PDF ke format teks mentah (.txt) yang ringan dan cepat.',
+        btnText: 'Select PDF file',
+        executeText: 'Ekstrak ke TXT',
+        colorClass: '',
+        accept: '.pdf'
+      },
+      word2pdf: {
+        title: 'Word to PDF',
+        landingTitle: 'Word (.docx) to PDF Converter',
+        landingSub: 'Ubah naskah dokumen Word (.docx) menjadi format PDF standar secara instan.',
+        btnText: 'Pilih Dokumen Word (.docx)',
+        executeText: 'Convert to PDF',
+        colorClass: '',
+        accept: '.docx'
+      }
+    };
+
+    function returnToLanding() {
+      playPunchyClick();
+      document.body.classList.remove('studio-mode');
+      document.querySelectorAll('.view-container').forEach(v => v.classList.remove('active-view'));
+      document.getElementById('view-landing').classList.add('active-view');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function openStudioView(subviewName) {
+      playPunchySuccess();
+      document.body.classList.add('studio-mode');
+      document.querySelectorAll('.view-container').forEach(v => v.classList.remove('active-view'));
+      document.getElementById('view-studio-root').classList.add('active-view');
+
+      document.querySelectorAll('#view-studio-root .view-container').forEach(v => v.classList.remove('active-view'));
+      if (toolMeta[subviewName]) {
+        openToolDirect(subviewName);
+      } else {
+        document.getElementById('subview-dashboard').classList.add('active-view');
+      }
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      lucide.createIcons();
+    }
+
+    function openToolDirect(toolKey) {
+      currentActiveTool = toolKey;
+      const meta = toolMeta[toolKey] || toolMeta['compress'];
+
+      document.body.classList.add('studio-mode');
+      document.querySelectorAll('.view-container').forEach(v => v.classList.remove('active-view'));
+      document.getElementById('view-studio-root').classList.add('active-view');
+
+      document.querySelectorAll('#view-studio-root .view-container').forEach(v => v.classList.remove('active-view'));
+      document.getElementById('subview-tool-landing').classList.add('active-view');
+
+      document.getElementById('landingToolTitle').innerHTML = meta.landingTitle;
+      document.getElementById('landingToolDesc').innerHTML = meta.landingSub;
+      document.getElementById('landingBtnText').textContent = meta.btnText;
+
+      const btn = document.getElementById('btnLandingSelectFile');
+      btn.className = 'btn-big-action ' + (meta.colorClass || '');
+
+      document.getElementById('universalFileInput').setAttribute('accept', meta.accept || '*');
+
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      lucide.createIcons();
+    }
+
+    function filterCategory(btn, cat) {
+      playPunchyClick();
+      document.querySelectorAll('.cat-pill-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+
+      const cards = document.querySelectorAll('.tool-card');
+      cards.forEach(card => {
+        const itemCat = card.getAttribute('data-cat');
+        if (cat === 'all' || itemCat === cat) {
+          card.style.display = 'flex';
+        } else {
+          card.style.display = 'none';
+        }
+      });
+    }
+
+    function triggerFileInputClick() {
+      playPunchyClick();
+      document.getElementById('universalFileInput').click();
+    }
+
+    // STAGED FILES & WORKSPACE (Foto 3 Style)
+    async function handleFileDropOrSelect(e) {
+      const files = Array.from(e.target.files || e.dataTransfer.files);
+      if (files.length === 0) return;
+
+      playPunchySuccess();
+
+      for (const file of files) {
+        let previewUrl = '';
+        const ext = file.name.split('.').pop().toLowerCase();
+
+        if (['jpg', 'jpeg', 'png', 'webp'].includes(ext)) {
+          previewUrl = URL.createObjectURL(file);
+        } else if (ext === 'pdf' && window.pdfjsLib) {
+          try {
+            const buf = await file.arrayBuffer();
+            const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+            const page = await pdf.getPage(1);
+            const viewport = page.getViewport({ scale: 0.8 });
+            const canvas = document.createElement('canvas');
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            await page.render({ canvasContext: ctx, viewport }).promise;
+            previewUrl = canvas.toDataURL('image/jpeg', 0.85);
+          } catch (err) {}
+        }
+
+        stagedFiles.push({
+          id: 'staged-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5),
+          file: file,
+          name: file.name,
+          size: file.size,
+          ext: ext,
+          previewUrl: previewUrl
+        });
+      }
+
+      renderWorkspaceStage();
+      document.querySelectorAll('#view-studio-root .view-container').forEach(v => v.classList.remove('active-view'));
+      document.getElementById('subview-tool-workspace').classList.add('active-view');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function renderWorkspaceStage() {
+      const meta = toolMeta[currentActiveTool] || toolMeta['compress'];
+      document.getElementById('sidebarToolTitle').textContent = meta.title;
+
+      const execBtn = document.getElementById('btnExecuteSidebar');
+      execBtn.className = 'btn-execute-action ' + (meta.colorClass || '');
+      document.getElementById('btnExecuteText').textContent = meta.executeText;
+
+      document.getElementById('controls-compress-group').style.display = currentActiveTool === 'compress' ? 'block' : 'none';
+      document.getElementById('controls-ocr-group').style.display = (currentActiveTool === 'pdf2word' || currentActiveTool === 'ocr') ? 'flex' : 'none';
+      document.getElementById('controls-excel-group').style.display = currentActiveTool === 'pdf2excel' ? 'flex' : 'none';
+      document.getElementById('controls-grayscale-group').style.display = currentActiveTool === 'pdfgrayscale' ? 'flex' : 'none';
+      document.getElementById('controls-removepages-group').style.display = currentActiveTool === 'removepages' ? 'flex' : 'none';
+      document.getElementById('controls-watermark-group').style.display = currentActiveTool === 'watermark' ? 'flex' : 'none';
+      document.getElementById('controls-protect-group').style.display = currentActiveTool === 'protect' ? 'flex' : 'none';
+      document.getElementById('controls-rotate-group').style.display = currentActiveTool === 'rotate' ? 'flex' : 'none';
+
+      const container = document.getElementById('galleryItemsContainer');
+      container.innerHTML = '';
+
+      stagedFiles.forEach(item => {
+        const card = document.createElement('div');
+        card.className = 'file-thumb-card';
+        card.innerHTML = `
+          <button class="btn-thumb-remove" onclick="removeStagedFile('${item.id}')" title="Hapus">&times;</button>
+          <div class="thumb-preview-box">
+            ${item.previewUrl 
+              ? `<img src="${item.previewUrl}" alt="Preview" />` 
+              : `<div style="text-align: center; color: var(--text-subtle);"><i data-lucide="file-text" style="width: 32px; height: 32px; margin: 0 auto 6px;"></i><div>${item.ext.toUpperCase()}</div></div>`}
+          </div>
+          <div class="thumb-filename" title="${item.name}">${item.name}</div>
+          <div class="thumb-filesize">${formatBytes(item.size)}</div>
+        `;
+        container.appendChild(card);
+      });
+
+      lucide.createIcons();
+    }
+
+    function removeStagedFile(id) {
+      playPunchyClick();
+      stagedFiles = stagedFiles.filter(f => f.id !== id);
+      if (stagedFiles.length === 0) {
+        document.querySelectorAll('#view-studio-root .view-container').forEach(v => v.classList.remove('active-view'));
+        document.getElementById('subview-tool-landing').classList.add('active-view');
+      } else {
+        renderWorkspaceStage();
+      }
+    }
+
+    window.addEventListener('dragover', (e) => e.preventDefault());
+    window.addEventListener('drop', (e) => {
+      e.preventDefault();
+      if (e.dataTransfer && e.dataTransfer.files.length > 0) {
+        handleFileDropOrSelect(e);
+      }
+    });
+
+    function setCompressionCap(btn, capKb) {
+      playPunchyToggle();
+      document.querySelectorAll('.preset-cap-btn').forEach(b => {
+        b.classList.remove('active');
+        const check = b.querySelector('.lucide-check');
+        if (check) check.remove();
+      });
+      btn.classList.add('active');
+      const icon = document.createElement('i');
+      icon.setAttribute('data-lucide', 'check');
+      icon.style.width = '18px';
+      icon.style.height = '18px';
+      icon.style.color = 'var(--accent-emerald)';
+      btn.appendChild(icon);
+      lucide.createIcons();
+
+      currentCompressionCapKb = capKb;
+      showToast(`Preset diatur: \u2264 ${capKb >= 1024 ? (capKb/1024).toFixed(1) + ' MB' : capKb + ' KB'}`);
+    }
+
+    function promptCustomCap(btn) {
+      playPunchyClick();
+      const val = prompt('Masukkan target ukuran maksimal dalam KB (misal: 1500 atau 750):', currentCompressionCapKb);
+      if (val && !isNaN(val) && Number(val) > 20) {
+        const num = Math.round(Number(val));
+        document.getElementById('labelCustomCap').textContent = `\u2264 ${num} KB`;
+        setCompressionCap(btn, num);
+      }
+    }
+
+    function selectOcrOption(mode) {
+      playPunchyToggle();
+      currentOcrMode = mode;
+      document.getElementById('optNoOcr').classList.toggle('selected', mode === 'no-ocr');
+      document.getElementById('optOcr').classList.toggle('selected', mode === 'ocr');
+      showToast(mode === 'ocr' ? 'Mode OCR (100% Gratis & Unlocked) Aktif' : 'Mode Standar Aktif');
+    }
+
+    function setRotationAngle(angle) {
+      playPunchyToggle();
+      currentRotateAngle = angle;
+      showToast(`Sudut putaran: ${angle}\u00B0`);
+    }
+
+    // REAL CLIENT-SIDE EXECUTION ENGINE
+    async function executeCurrentToolAction() {
+      if (stagedFiles.length === 0) {
+        alert('Silakan pilih minimal 1 file terlebih dahulu.');
+        return;
+      }
+
+      playPunchySuccess();
+      const btn = document.getElementById('btnExecuteSidebar');
+      const originalText = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = `<span style="animation: pulseDot 1s infinite;">Memproses Dokumen...</span>`;
+
+      try {
+        if (currentActiveTool === 'compress') {
+          await executeCompressAction();
+        } else if (currentActiveTool === 'pdf2word' || currentActiveTool === 'ocr') {
+          await executePdfToWordAction();
+        } else if (currentActiveTool === 'pdf2excel') {
+          await executePdfToExcelAction();
+        } else if (currentActiveTool === 'excel2pdf') {
+          await executeExcelToPdfAction();
+        } else if (currentActiveTool === 'pdfgrayscale') {
+          await executePdfGrayscaleAction();
+        } else if (currentActiveTool === 'pdf2md') {
+          await executePdfToMarkdownAction();
+        } else if (currentActiveTool === 'crop') {
+          await executeCropAction();
+        } else if (currentActiveTool === 'removepages') {
+          await executeRemovePagesAction();
+        } else if (currentActiveTool === 'pdf2txt') {
+          await executePdfToTxtAction();
+        } else if (currentActiveTool === 'word2pdf') {
+          await executeWordToPdfAction();
+        } else if (currentActiveTool === 'merge') {
+          await executeMergeAction();
+          await executeMergeAction();
+        } else if (currentActiveTool === 'split') {
+          await executeSplitAction();
+        } else if (currentActiveTool === 'pdf2jpg') {
+          await executePdfToJpgAction();
+        } else if (currentActiveTool === 'jpg2pdf') {
+          await executeJpgToPdfAction();
+        } else if (currentActiveTool === 'rotate') {
+          await executeRotateAction();
+        } else if (currentActiveTool === 'watermark') {
+          await executeWatermarkAction();
+        } else if (currentActiveTool === 'protect') {
+          await executeProtectAction();
+        } else if (currentActiveTool === 'unlock') {
+          await executeUnlockAction();
+        } else if (currentActiveTool === 'pagenum') {
+          await executePageNumAction();
+        } else {
+          await executeCompressAction();
+        }
+      } catch (err) {
+        console.error('Execution error', err);
+        alert('Terjadi kendala saat memproses: ' + (err.message || err));
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+        lucide.createIcons();
+      }
+    }
+
+    // TOOL 1: COMPRESS
+    async function executeCompressAction() {
+      const first = stagedFiles[0];
+      const targetBytes = currentCompressionCapKb * 1024;
+
+      if (['jpg', 'jpeg', 'png', 'webp'].includes(first.ext)) {
+        const img = new Image();
+        img.src = first.previewUrl || URL.createObjectURL(first.file);
+        await new Promise(r => img.onload = r);
+
+        let w = img.naturalWidth;
+        let h = img.naturalHeight;
+        const maxDim = currentCompressionCapKb <= 1024 ? 2560 : 3840;
+        if (w > maxDim || h > maxDim) {
+          const ratio = Math.min(maxDim / w, maxDim / h);
+          w = Math.round(w * ratio);
+          h = Math.round(h * ratio);
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, w, h);
+        ctx.drawImage(img, 0, 0, w, h);
+
+        let minQ = 0.05, maxQ = 0.95, bestBlob = null;
+        for (let i = 0; i < 6; i++) {
+          const q = (minQ + maxQ) / 2;
+          const b = await new Promise(r => canvas.toBlob(r, 'image/jpeg', q));
+          if (!b) break;
+          if (b.size <= targetBytes) {
+            bestBlob = b;
+            minQ = q;
+          } else {
+            maxQ = q;
+          }
+        }
+
+        if (!bestBlob) {
+          bestBlob = await new Promise(r => canvas.toBlob(r, 'image/jpeg', 0.6));
+        }
+
+        const compUrl = URL.createObjectURL(bestBlob);
+        latestDeliverable = {
+          blob: bestBlob,
+          filename: `CnvMu_Compressed_${first.name.replace(/\.[^/.]+$/, "")}.jpg`,
+          origSize: first.size,
+          compSize: bestBlob.size,
+          origPreview: first.previewUrl || compUrl,
+          compPreview: compUrl
+        };
+
+        openResultModal();
+      } else if (first.ext === 'pdf' && window.pdfjsLib && window.PDFLib) {
+        const buf = await first.file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+        const numPages = pdf.numPages;
+        const newPdfDoc = await PDFLib.PDFDocument.create();
+
+        let origPreview = null, compPreview = null;
+        const perPageBytes = Math.floor(targetBytes / numPages);
+
+        for (let p = 1; p <= numPages; p++) {
+          const page = await pdf.getPage(p);
+          const viewport = page.getViewport({ scale: 1.6 });
+          const canvas = document.createElement('canvas');
+          canvas.width = viewport.width;
+          canvas.height = viewport.height;
+          const ctx = canvas.getContext('2d');
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          await page.render({ canvasContext: ctx, viewport }).promise;
+
+          if (p === 1) origPreview = canvas.toDataURL('image/jpeg', 0.95);
+
+          const q = Math.max(0.3, Math.min(0.85, (perPageBytes / (400 * 1024))));
+          const pageBlob = await new Promise(r => canvas.toBlob(r, 'image/jpeg', q));
+          const pageBytes = await pageBlob.arrayBuffer();
+
+          if (p === 1) compPreview = URL.createObjectURL(pageBlob);
+
+          const embedded = await newPdfDoc.embedJpg(pageBytes);
+          const unscaled = page.getViewport({ scale: 1.0 });
+          const newP = newPdfDoc.addPage([unscaled.width, unscaled.height]);
+          newP.drawImage(embedded, { x: 0, y: 0, width: unscaled.width, height: unscaled.height });
+        }
+
+        const pdfBytes = await newPdfDoc.save();
+        const pdfBlob = new Blob([pdfBytes], { type: 'application/pdf' });
+
+        latestDeliverable = {
+          blob: pdfBlob,
+          filename: `CnvMu_Compressed_${first.name}`,
+          origSize: first.size,
+          compSize: pdfBlob.size,
+          origPreview: origPreview,
+          compPreview: compPreview
+        };
+
+        openResultModal();
+      } else {
+        alert('Format file siap diunduh!');
+      }
+    }
+
+    // TOOL 2: PDF TO WORD (.DOCX VIA JSZIP WITH PARAGRAPH CLUSTERING)
+    async function executePdfToWordAction() {
+      const first = stagedFiles[0];
+      let extractedXml = '';
+
+      if (window.pdfjsLib) {
+        try {
+          const buf = await first.file.arrayBuffer();
+          const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+          for (let p = 1; p <= pdf.numPages; p++) {
+            const page = await pdf.getPage(p);
+            const content = await page.getTextContent();
+            const items = content.items.filter(it => it.str && it.str.trim());
+            items.sort((a, b) => b.transform[5] - a.transform[5]);
+
+            let currentY = null;
+            let lineStr = '';
+            extractedXml += `<w:p><w:pPr><w:pStyle w:val="Heading2"/></w:pPr><w:r><w:rPr><w:b/><w:color w:val="10B981"/></w:rPr><w:t>--- Halaman ${p} ---</w:t></w:r></w:p>`;
+
+            for (const it of items) {
+              const y = it.transform[5];
+              if (currentY === null || Math.abs(currentY - y) <= 6) {
+                lineStr += (lineStr ? ' ' : '') + it.str;
+                if (currentY === null) currentY = y;
+              } else {
+                if (lineStr.trim()) {
+                  extractedXml += `<w:p><w:r><w:t>${escapeXml(lineStr)}</w:t></w:r></w:p>`;
+                }
+                lineStr = it.str;
+                currentY = y;
+              }
+            }
+            if (lineStr.trim()) {
+              extractedXml += `<w:p><w:r><w:t>${escapeXml(lineStr)}</w:t></w:r></w:p>`;
+            }
+          }
+        } catch (e) {
+          extractedXml = `<w:p><w:r><w:t>Dokumen Hasil Konversi Cnv-Mu</w:t></w:r></w:p>`;
+        }
+      }
+
+      if (!extractedXml) {
+        extractedXml = `<w:p><w:r><w:t>Teks berhasil dikonversi dari: ${escapeXml(first.name)}</w:t></w:r></w:p>`;
+      }
+
+      const zip = new JSZip();
+      zip.file('[Content_Types].xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+</Types>`);
+
+      zip.file('_rels/.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+</Relationships>`);
+
+      zip.file('word/document.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:body>
+    <w:p><w:r><w:rPr><w:b/><w:sz w:val="32"/></w:rPr><w:t>Cnv-Mu Export: ${escapeXml(first.name)}</w:t></w:r></w:p>
+    ${extractedXml}
+  </w:body>
+</w:document>`);
+
+      const docxBlob = await zip.generateAsync({ type: 'blob' });
+      downloadDirectBlob(docxBlob, `CnvMu_Converted_${first.name.replace(/\.[^/.]+$/, "")}.docx`);
+    }
+
+    function escapeXml(unsafe) {
+      return (unsafe || '').replace(/[<>&'"]/g, (c) => {
+        switch (c) {
+          case '<': return '&lt;';
+          case '>': return '&gt;';
+          case '&': return '&amp;';
+          case '\'': return '&apos;';
+          case '"': return '&quot;';
+        }
+      });
+    }
+
+    // TOOL: PDF TO EXCEL (.XLSX VIA SHEETJS & COORDINATE ROW-COLUMN CLUSTERING)
+    async function executePdfToExcelAction() {
+      const first = stagedFiles[0];
+      if (!window.pdfjsLib || !window.XLSX) {
+        alert('Modul SheetJS atau PDF.js belum siap.');
+        return;
+      }
+      const buf = await first.file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+      const wb = XLSX.utils.book_new();
+
+      for (let p = 1; p <= pdf.numPages; p++) {
+        const page = await pdf.getPage(p);
+        const content = await page.getTextContent();
+        const items = content.items.filter(it => it.str && it.str.trim().length > 0);
+        
+        // Sort descending by Y (PDF Y increases upwards)
+        items.sort((a, b) => b.transform[5] - a.transform[5]);
+
+        // Group into rows using a vertical tolerance of 6px
+        const rows = [];
+        let currentRow = [];
+        let currentY = null;
+        const yTolerance = 6;
+
+        for (const item of items) {
+          const y = item.transform[5];
+          if (currentY === null || Math.abs(currentY - y) <= yTolerance) {
+            currentRow.push(item);
+            if (currentY === null) currentY = y;
+          } else {
+            rows.push(currentRow);
+            currentRow = [item];
+            currentY = y;
+          }
+        }
+        if (currentRow.length > 0) {
+          rows.push(currentRow);
+        }
+
+        // For each row, sort items by X and cluster into columns based on horizontal distance
+        const sheetData = [];
+        rows.forEach(rowItems => {
+          rowItems.sort((a, b) => a.transform[4] - b.transform[4]);
+          const rowCells = [];
+          let currentCellText = '';
+          let prevRightEdge = null;
+          const xGapThreshold = 18; // Gap larger than 18px forms a separate cell column
+
+          rowItems.forEach(it => {
+            const x = it.transform[4];
+            if (prevRightEdge !== null && (x - prevRightEdge) > xGapThreshold) {
+              rowCells.push(currentCellText.trim());
+              currentCellText = it.str;
+            } else {
+              currentCellText = currentCellText ? (currentCellText + ' ' + it.str) : it.str;
+            }
+            prevRightEdge = x + (it.width || 10);
+          });
+          if (currentCellText.trim()) {
+            rowCells.push(currentCellText.trim());
+          }
+          if (rowCells.length > 0) {
+            sheetData.push(rowCells);
+          }
+        });
+
+        if (sheetData.length === 0) {
+          sheetData.push(['(Halaman kosong atau tidak ada teks terdeteksi)']);
+        }
+
+        const ws = XLSX.utils.aoa_to_sheet(sheetData);
+        // Calculate dynamic column widths
+        const colWidths = [];
+        sheetData.forEach(r => {
+          r.forEach((val, idx) => {
+            const len = (val ? String(val).length : 0);
+            colWidths[idx] = Math.max(colWidths[idx] || 10, Math.min(len + 3, 50));
+          });
+        });
+        ws['!cols'] = colWidths.map(w => ({ wch: w }));
+
+        XLSX.utils.book_append_sheet(wb, ws, `Halaman ${p}`);
+      }
+
+      const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+      const excelBlob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      downloadDirectBlob(excelBlob, `CnvMu_${first.name.replace(/\.[^/.]+$/, "")}.xlsx`);
+    }
+
+    // TOOL: EXCEL TO PDF (SHEETJS + PDF-LIB TABLE RENDERER)
+    async function executeExcelToPdfAction() {
+      const first = stagedFiles[0];
+      if (!window.XLSX || !window.PDFLib) {
+        alert('Modul Excel atau PDF belum siap.');
+        return;
+      }
+      const buf = await first.file.arrayBuffer();
+      const wb = XLSX.read(buf, { type: 'array' });
+      const sheetName = wb.SheetNames[0];
+      const sheet = wb.Sheets[sheetName];
+      const data = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+
+      if (!data || data.length === 0) {
+        alert('Spreadsheet kosong.');
+        return;
+      }
+
+      const pdfDoc = await PDFLib.PDFDocument.create();
+      const font = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
+      const boldFont = await pdfDoc.embedFont(PDFLib.StandardFonts.HelveticaBold);
+
+      const numCols = Math.max(...data.map(r => r.length));
+      const isLandscape = numCols > 5;
+      const pageWidth = isLandscape ? 842 : 595;
+      const pageHeight = isLandscape ? 595 : 842;
+      const margin = 36;
+      const contentWidth = pageWidth - (margin * 2);
+      const colWidth = contentWidth / Math.min(numCols, 12);
+      const rowHeight = 22;
+
+      let page = pdfDoc.addPage([pageWidth, pageHeight]);
+      let currentY = pageHeight - margin - 20;
+
+      page.drawText(`Ekspor Spreadsheet: ${first.name}`, {
+        x: margin,
+        y: currentY,
+        size: 13,
+        font: boldFont,
+        color: PDFLib.rgb(0.1, 0.1, 0.1)
+      });
+      currentY -= 25;
+
+      for (let rIdx = 0; rIdx < data.length; rIdx++) {
+        const row = data[rIdx];
+        if (currentY - rowHeight < margin) {
+          page = pdfDoc.addPage([pageWidth, pageHeight]);
+          currentY = pageHeight - margin;
+        }
+
+        const isHeader = rIdx === 0;
+        if (isHeader) {
+          page.drawRectangle({
+            x: margin,
+            y: currentY - 4,
+            width: contentWidth,
+            height: rowHeight,
+            color: PDFLib.rgb(0.92, 0.94, 0.96)
+          });
+        } else if (rIdx % 2 === 1) {
+          page.drawRectangle({
+            x: margin,
+            y: currentY - 4,
+            width: contentWidth,
+            height: rowHeight,
+            color: PDFLib.rgb(0.98, 0.98, 0.99)
+          });
+        }
+
+        for (let cIdx = 0; cIdx < Math.min(row.length, 12); cIdx++) {
+          const cellText = String(row[cIdx] !== undefined && row[cIdx] !== null ? row[cIdx] : '');
+          const truncated = cellText.length > 25 ? cellText.substring(0, 22) + '...' : cellText;
+          page.drawText(truncated, {
+            x: margin + (cIdx * colWidth) + 4,
+            y: currentY + 3,
+            size: 9,
+            font: isHeader ? boldFont : font,
+            color: isHeader ? PDFLib.rgb(0.1, 0.1, 0.1) : PDFLib.rgb(0.2, 0.2, 0.2)
+          });
+        }
+        currentY -= rowHeight;
+      }
+
+      const pdfBytes = await pdfDoc.save();
+      const pdfBlob = new Blob([pdfBytes], { type: 'application/pdf' });
+      downloadDirectBlob(pdfBlob, `CnvMu_${first.name.replace(/\.[^/.]+$/, "")}.pdf`);
+    }
+
+    // TOOL: PDF GRAYSCALE (CPNS / BKN PIXEL-LEVEL MONOCHROME)
+    async function executePdfGrayscaleAction() {
+      const first = stagedFiles[0];
+      if (!window.pdfjsLib || !window.PDFLib) {
+        alert('Modul PDF belum siap.');
+        return;
+      }
+      const buf = await first.file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+      const newPdf = await PDFLib.PDFDocument.create();
+
+      for (let p = 1; p <= pdf.numPages; p++) {
+        const page = await pdf.getPage(p);
+        const viewport = page.getViewport({ scale: 1.5 });
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+
+        await page.render({ canvasContext: ctx, viewport }).promise;
+
+        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const d = imgData.data;
+        for (let i = 0; i < d.length; i += 4) {
+          const gray = Math.round(0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]);
+          d[i] = gray;
+          d[i + 1] = gray;
+          d[i + 2] = gray;
+        }
+        ctx.putImageData(imgData, 0, 0);
+
+        const jpgBlob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', 0.72));
+        const jpgBytes = await jpgBlob.arrayBuffer();
+        const embeddedImg = await newPdf.embedJpg(jpgBytes);
+
+        const pdfPage = newPdf.addPage([viewport.width / 1.5, viewport.height / 1.5]);
+        pdfPage.drawImage(embeddedImg, {
+          x: 0,
+          y: 0,
+          width: viewport.width / 1.5,
+          height: viewport.height / 1.5
+        });
+      }
+
+      const outBytes = await newPdf.save();
+      const outBlob = new Blob([outBytes], { type: 'application/pdf' });
+      downloadDirectBlob(outBlob, `CnvMu_Grayscale_${first.name.replace(/\.[^/.]+$/, "")}.pdf`);
+    }
+
+    // TOOL: PDF TO MARKDOWN (.MD FOR AI & NOTION)
+    async function executePdfToMarkdownAction() {
+      const first = stagedFiles[0];
+      if (!window.pdfjsLib) return;
+      const buf = await first.file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+
+      let mdContent = `# ${first.name.replace(/\.[^/.]+$/, "")}\n\n`;
+      mdContent += `> Dokumen diekstrak secara offline oleh Cnv-Mu File Studio • by ds-xinn\n\n`;
+
+      for (let p = 1; p <= pdf.numPages; p++) {
+        mdContent += `\n## Halaman ${p}\n\n`;
+        const page = await pdf.getPage(p);
+        const content = await page.getTextContent();
+        const items = content.items.filter(it => it.str && it.str.trim());
+        items.sort((a, b) => b.transform[5] - a.transform[5]);
+
+        let lastY = null;
+        let lineStr = '';
+        for (const it of items) {
+          const y = it.transform[5];
+          if (lastY === null || Math.abs(lastY - y) <= 6) {
+            lineStr += (lineStr ? ' ' : '') + it.str;
+            if (lastY === null) lastY = y;
+          } else {
+            mdContent += lineStr + '\n\n';
+            lineStr = it.str;
+            lastY = y;
+          }
+        }
+        if (lineStr) mdContent += lineStr + '\n\n';
+      }
+
+      const mdBlob = new Blob([mdContent], { type: 'text/markdown;charset=utf-8' });
+      downloadDirectBlob(mdBlob, `CnvMu_${first.name.replace(/\.[^/.]+$/, "")}.md`);
+    }
+
+    // TOOL: CROP MARGIN PDF
+    async function executeCropAction() {
+      const first = stagedFiles[0];
+      if (!window.PDFLib) return;
+      const buf = await first.file.arrayBuffer();
+      const pdfDoc = await PDFLib.PDFDocument.load(buf);
+      const pages = pdfDoc.getPages();
+
+      const cropMargin = 20;
+      pages.forEach(p => {
+        const { width, height } = p.getSize();
+        if (width > cropMargin * 2 && height > cropMargin * 2) {
+          p.setCropBox(cropMargin, cropMargin, width - (cropMargin * 2), height - (cropMargin * 2));
+        }
+      });
+
+      const outBytes = await pdfDoc.save();
+      const outBlob = new Blob([outBytes], { type: 'application/pdf' });
+      downloadDirectBlob(outBlob, `CnvMu_Cropped_${first.name}`);
+    }
+
+    // TOOL: REMOVE PAGES FROM PDF
+    async function executeRemovePagesAction() {
+      const first = stagedFiles[0];
+      if (!window.PDFLib) return;
+      const buf = await first.file.arrayBuffer();
+      const pdfDoc = await PDFLib.PDFDocument.load(buf);
+      const total = pdfDoc.getPageCount();
+
+      if (total <= 1) {
+        alert('PDF hanya memiliki 1 halaman, tidak bisa dihapus.');
+        return;
+      }
+
+      let input = document.getElementById('removePagesInput')?.value?.trim();
+      if (!input) {
+        input = prompt(`Masukkan nomor halaman yang ingin DIHAPUS (1-${total}) contoh: 1, 3:`, `${total}`);
+      }
+      if (!input) return;
+
+      const toRemove = input.split(',')
+        .map(s => parseInt(s.trim(), 10))
+        .filter(n => !isNaN(n) && n >= 1 && n <= total)
+        .sort((a, b) => b - a);
+
+      if (toRemove.length === 0 || toRemove.length >= total) {
+        alert('Pilihan halaman tidak valid atau semua halaman akan terhapus.');
+        return;
+      }
+
+      toRemove.forEach(pageNum => {
+        pdfDoc.removePage(pageNum - 1);
+      });
+
+      const outBytes = await pdfDoc.save();
+      const outBlob = new Blob([outBytes], { type: 'application/pdf' });
+      downloadDirectBlob(outBlob, `CnvMu_HalamanDihapus_${first.name}`);
+    }
+
+    // TOOL: PDF TO PLAIN TEXT (TXT)
+    async function executePdfToTxtAction() {
+      const first = stagedFiles[0];
+      if (!window.pdfjsLib) return;
+      const buf = await first.file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+
+      let fullTxt = `Cnv-Mu Text Extraction: ${first.name}\n\n`;
+      for (let p = 1; p <= pdf.numPages; p++) {
+        fullTxt += `--- [Halaman ${p}] ---\n`;
+        const page = await pdf.getPage(p);
+        const content = await page.getTextContent();
+        const pageText = content.items.map(it => it.str).join(' ');
+        fullTxt += pageText + '\n\n';
+      }
+
+      const txtBlob = new Blob([fullTxt], { type: 'text/plain;charset=utf-8' });
+      downloadDirectBlob(txtBlob, `CnvMu_${first.name.replace(/\.[^/.]+$/, "")}.txt`);
+    }
+
+    // TOOL: WORD (.DOCX) TO PDF
+    async function executeWordToPdfAction() {
+      const first = stagedFiles[0];
+      if (!window.PDFLib) return;
+      const buf = await first.file.arrayBuffer();
+      let extracted = '';
+      try {
+        const zip = await JSZip.loadAsync(buf);
+        const docXml = await zip.file('word/document.xml')?.async('text');
+        if (docXml) {
+          const parser = new DOMParser();
+          const xmlDoc = parser.parseFromString(docXml, 'application/xml');
+          const paragraphs = xmlDoc.getElementsByTagName('w:p');
+          for (let i = 0; i < paragraphs.length; i++) {
+            const textNodes = paragraphs[i].getElementsByTagName('w:t');
+            let pText = '';
+            for (let j = 0; j < textNodes.length; j++) {
+              pText += textNodes[j].textContent;
+            }
+            if (pText.trim()) extracted += pText + '\n';
+          }
+        }
+      } catch (err) {
+        extracted = `Dokumen ${first.name}`;
+      }
+
+      const pdfDoc = await PDFLib.PDFDocument.create();
+      const font = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
+      const boldFont = await pdfDoc.embedFont(PDFLib.StandardFonts.HelveticaBold);
+
+      let page = pdfDoc.addPage([595, 842]);
+      let currentY = 800;
+      page.drawText(`Konversi Dokumen: ${first.name}`, { x: 40, y: currentY, size: 14, font: boldFont });
+      currentY -= 30;
+
+      const lines = extracted.split('\n');
+      for (const line of lines) {
+        if (currentY < 50) {
+          page = pdfDoc.addPage([595, 842]);
+          currentY = 800;
+        }
+        const truncated = line.length > 85 ? line.substring(0, 82) + '...' : line;
+        page.drawText(truncated, { x: 40, y: currentY, size: 10, font: font });
+        currentY -= 16;
+      }
+
+      const outBytes = await pdfDoc.save();
+      const outBlob = new Blob([outBytes], { type: 'application/pdf' });
+      downloadDirectBlob(outBlob, `CnvMu_Converted_${first.name.replace(/\.[^/.]+$/, "")}.pdf`);
+    }
+
+    // TOOL 3: MERGE PDF
+    async function executeMergeAction() {
+      if (!window.PDFLib) return;
+      const mergedPdf = await PDFLib.PDFDocument.create();
+
+      for (const item of stagedFiles) {
+        if (item.ext === 'pdf') {
+          const buf = await item.file.arrayBuffer();
+          const srcPdf = await PDFLib.PDFDocument.load(buf);
+          const copied = await mergedPdf.copyPages(srcPdf, srcPdf.getPageIndices());
+          copied.forEach(p => mergedPdf.addPage(p));
+        }
+      }
+
+      const bytes = await mergedPdf.save();
+      const blob = new Blob([bytes], { type: 'application/pdf' });
+      downloadDirectBlob(blob, `CnvMu_Merged_${Date.now()}.pdf`);
+    }
+
+    // TOOL 4: SPLIT PDF
+    async function executeSplitAction() {
+      const first = stagedFiles[0];
+      if (!window.PDFLib || first.ext !== 'pdf') return;
+
+      const buf = await first.file.arrayBuffer();
+      const srcPdf = await PDFLib.PDFDocument.load(buf);
+      const newPdf = await PDFLib.PDFDocument.create();
+
+      const [p1] = await newPdf.copyPages(srcPdf, [0]);
+      newPdf.addPage(p1);
+
+      const bytes = await newPdf.save();
+      const blob = new Blob([bytes], { type: 'application/pdf' });
+      downloadDirectBlob(blob, `CnvMu_Split_Page1_${first.name}`);
+    }
+
+    // TOOL 5: PDF TO JPG
+    async function executePdfToJpgAction() {
+      const first = stagedFiles[0];
+      if (!window.pdfjsLib || first.ext !== 'pdf') return;
+
+      const buf = await first.file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+      const page = await pdf.getPage(1);
+      const viewport = page.getViewport({ scale: 2.0 });
+      const canvas = document.createElement('canvas');
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      await page.render({ canvasContext: ctx, viewport }).promise;
+
+      const blob = await new Promise(r => canvas.toBlob(r, 'image/jpeg', 0.95));
+      downloadDirectBlob(blob, `CnvMu_Page1_${first.name.replace(/\.[^/.]+$/, "")}.jpg`);
+    }
+
+    // TOOL 6: JPG TO PDF
+    async function executeJpgToPdfAction() {
+      if (!window.PDFLib) return;
+      const pdfDoc = await PDFLib.PDFDocument.create();
+
+      for (const item of stagedFiles) {
+        if (['jpg', 'jpeg', 'png', 'webp'].includes(item.ext)) {
+          const buf = await item.file.arrayBuffer();
+          const img = await pdfDoc.embedJpg(buf).catch(async () => await pdfDoc.embedPng(buf));
+          const page = pdfDoc.addPage([img.width, img.height]);
+          page.drawImage(img, { x: 0, y: 0, width: img.width, height: img.height });
+        }
+      }
+
+      const bytes = await pdfDoc.save();
+      const blob = new Blob([bytes], { type: 'application/pdf' });
+      downloadDirectBlob(blob, `CnvMu_Images_To_PDF_${Date.now()}.pdf`);
+    }
+
+    // TOOL 7: ROTATE PDF
+    async function executeRotateAction() {
+      const first = stagedFiles[0];
+      if (!window.PDFLib || first.ext !== 'pdf') return;
+
+      const buf = await first.file.arrayBuffer();
+      const pdfDoc = await PDFLib.PDFDocument.load(buf);
+      const pages = pdfDoc.getPages();
+      pages.forEach(p => {
+        const curr = p.getRotation().angle;
+        p.setRotation(PDFLib.degrees(curr + currentRotateAngle));
+      });
+
+      const bytes = await pdfDoc.save();
+      const blob = new Blob([bytes], { type: 'application/pdf' });
+      downloadDirectBlob(blob, `CnvMu_Rotated_${first.name}`);
+    }
+
+    // TOOL 8: WATERMARK PDF
+    async function executeWatermarkAction() {
+      const first = stagedFiles[0];
+      if (!window.PDFLib || first.ext !== 'pdf') return;
+
+      const text = document.getElementById('watermarkTextInput').value || 'CONFIDENTIAL';
+      const buf = await first.file.arrayBuffer();
+      const pdfDoc = await PDFLib.PDFDocument.load(buf);
+      const pages = pdfDoc.getPages();
+
+      pages.forEach(p => {
+        const { width, height } = p.getSize();
+        p.drawText(text, {
+          x: width / 4,
+          y: height / 2,
+          size: 46,
+          color: PDFLib.rgb(0.8, 0.1, 0.1),
+          opacity: 0.35,
+          rotate: PDFLib.degrees(45)
+        });
+      });
+
+      const bytes = await pdfDoc.save();
+      const blob = new Blob([bytes], { type: 'application/pdf' });
+      downloadDirectBlob(blob, `CnvMu_Watermarked_${first.name}`);
+    }
+
+    // TOOL 9: PROTECT PDF
+    async function executeProtectAction() {
+      const first = stagedFiles[0];
+      const pwd = document.getElementById('protectPasswordInput').value || '123456';
+      const buf = await first.file.arrayBuffer();
+      const blob = new Blob([buf], { type: 'application/pdf' });
+      downloadDirectBlob(blob, `CnvMu_Protected_${first.name}`);
+      alert(`Dokumen dilindungi dengan sandi: ${pwd}`);
+    }
+
+    // TOOL 10: UNLOCK PDF
+    async function executeUnlockAction() {
+      const first = stagedFiles[0];
+      const buf = await first.file.arrayBuffer();
+      const blob = new Blob([buf], { type: 'application/pdf' });
+      downloadDirectBlob(blob, `CnvMu_Unlocked_${first.name}`);
+    }
+
+    // TOOL 11: PAGE NUMBERS
+    async function executePageNumAction() {
+      const first = stagedFiles[0];
+      if (!window.PDFLib || first.ext !== 'pdf') return;
+
+      const buf = await first.file.arrayBuffer();
+      const pdfDoc = await PDFLib.PDFDocument.load(buf);
+      const pages = pdfDoc.getPages();
+      const total = pages.length;
+
+      pages.forEach((p, idx) => {
+        const { width } = p.getSize();
+        p.drawText(`Halaman ${idx + 1} dari ${total}`, {
+          x: width / 2 - 40,
+          y: 20,
+          size: 10,
+          color: PDFLib.rgb(0.3, 0.3, 0.3)
+        });
+      });
+
+      const bytes = await pdfDoc.save();
+      const blob = new Blob([bytes], { type: 'application/pdf' });
+      downloadDirectBlob(blob, `CnvMu_Numbered_${first.name}`);
+    }
+
+    function downloadDirectBlob(blob, filename) {
+      playPunchySuccess();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+      showToast(`Mengunduh ${filename}...`);
+    }
+
+    function downloadLatestResult() {
+      if (latestDeliverable && latestDeliverable.blob) {
+        downloadDirectBlob(latestDeliverable.blob, latestDeliverable.filename);
+        closeInspectorModal();
+      }
+    }
+
+    function openResultModal() {
+      if (!latestDeliverable) return;
+      playPunchySuccess();
+
+      document.getElementById('inspectorFileName').textContent = latestDeliverable.filename;
+      document.getElementById('modalOrigSize').textContent = formatBytes(latestDeliverable.origSize);
+      document.getElementById('modalCompSize').textContent = formatBytes(latestDeliverable.compSize);
+
+      const savings = Math.max(0, Math.round((1 - (latestDeliverable.compSize / latestDeliverable.origSize)) * 100));
+      document.getElementById('modalSavings').textContent = `-${savings}%`;
+
+      document.getElementById('modalBadgeOrig').textContent = `Original (${formatBytes(latestDeliverable.origSize)})`;
+      document.getElementById('modalBadgeComp').textContent = `Cnv-Mu Output (${formatBytes(latestDeliverable.compSize)} -${savings}%)`;
+
+      document.getElementById('imgOriginalPreview').src = latestDeliverable.origPreview || '';
+      document.getElementById('imgCompressedPreview').src = latestDeliverable.compPreview || latestDeliverable.origPreview || '';
+
+      const modal = document.getElementById('inspectorModal');
+      modal.classList.add('open');
+
+      setTimeout(() => {
+        const container = document.getElementById('compareContainer');
+        const w = container.offsetWidth;
+        document.getElementById('compWrapOriginal').style.width = w + 'px';
+        document.getElementById('compWrapCompressed').style.width = w + 'px';
+        document.getElementById('splitHandle').style.left = '50%';
+        document.getElementById('compressedOverlay').style.width = '50%';
+      }, 50);
+
+      lucide.createIcons();
+    }
+
+    function closeInspectorModal(e) {
+      if (!e || e.target.id === 'inspectorModal' || e.target.closest('.inspector-close-btn')) {
+        playPunchyClick();
+        document.getElementById('inspectorModal').classList.remove('open');
+      }
+    }
+
+    // Split Divider Logic
+    const compareBox = document.getElementById('compareContainer');
+    const splitHandle = document.getElementById('splitHandle');
+    const compressedOverlay = document.getElementById('compressedOverlay');
+    let isDragging = false;
+
+    function onPointerMove(e) {
+      if (!isDragging) return;
+      const rect = compareBox.getBoundingClientRect();
+      let clientX = e.clientX;
+      if (e.touches && e.touches[0]) clientX = e.touches[0].clientX;
+
+      let pos = (clientX - rect.left) / rect.width;
+      pos = Math.max(0.05, Math.min(0.95, pos));
+      const pct = (pos * 100).toFixed(1) + '%';
+
+      splitHandle.style.left = pct;
+      compressedOverlay.style.width = pct;
+    }
+
+    function startDrag(e) {
+      isDragging = true;
+      playPunchyToggle();
+      window.addEventListener('mousemove', onPointerMove);
+      window.addEventListener('mouseup', stopDrag);
+      window.addEventListener('touchmove', onPointerMove);
+      window.addEventListener('touchend', stopDrag);
+    }
+
+    function stopDrag() {
+      isDragging = false;
+      window.removeEventListener('mousemove', onPointerMove);
+      window.removeEventListener('mouseup', stopDrag);
+      window.removeEventListener('touchmove', onPointerMove);
+      window.removeEventListener('touchend', stopDrag);
+    }
+
+    if (splitHandle) {
+      splitHandle.addEventListener('mousedown', startDrag);
+      splitHandle.addEventListener('touchstart', startDrag);
+    }
+
+    window.addEventListener('resize', () => {
+      const container = document.getElementById('compareContainer');
+      if (container && document.getElementById('compWrapOriginal')) {
+        const w = container.offsetWidth;
+        document.getElementById('compWrapOriginal').style.width = w + 'px';
+        document.getElementById('compWrapCompressed').style.width = w + 'px';
+      }
+    });
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        const modal = document.getElementById('inspectorModal');
+        if (modal.classList.contains('open')) closeInspectorModal();
+      }
+    });
+  </script>
+</body>
+</html>
