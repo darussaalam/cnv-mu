@@ -647,10 +647,12 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 12px 24px;
-      margin-bottom: 24px;
+      padding: 6px 2px;
+      margin-bottom: 8px;
       gap: 16px;
-      border-radius: var(--radius-pill);
+      background: transparent;
+      border: none;
+      box-shadow: none;
     }
 
     .brand-cluster {
@@ -737,8 +739,8 @@
     /* Dashboard Header & Filter Pills (Foto 1) */
     .dashboard-hero {
       text-align: center;
-      margin-bottom: 28px;
-      padding: 10px 0;
+      margin-bottom: 20px;
+      padding: 2px 0 6px;
     }
 
     .dash-headline {
@@ -2119,17 +2121,13 @@
     <div class="studio-app-viewport">
 
       <!-- Studio Top Nav -->
-      <header class="top-nav liquid-card">
+      <header class="top-nav">
         <div class="brand-cluster" onclick="returnToLanding()" title="Kembali ke Beranda CnvM">
           <img src="assets/cnvm-logo.png" alt="CnvM Logo" class="cnvm-studio-logo" />
-          <div class="badge-privacy" style="margin-left: 8px;">
-            <span class="badge-dot"></span>
-            <span>100% Offline &amp; Free</span>
-          </div>
         </div>
 
         <div class="nav-actions">
-          <button class="btn-icon-liquid" title="Kembali ke Beranda Cnv-Mu" onclick="returnToLanding()">
+          <button class="btn-icon-liquid" title="Kembali ke Beranda CnvM" onclick="returnToLanding()">
             <i data-lucide="home" style="width: 18px; height: 18px;"></i>
           </button>
           <button id="soundToggleBtn" class="btn-icon-liquid" title="Toggle Punchy Audio Feedback" onclick="toggleSound()">
